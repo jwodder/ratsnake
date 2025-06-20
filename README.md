@@ -3,8 +3,6 @@
 [![Minimum Supported Rust Version](https://img.shields.io/badge/MSRV-1.74-orange)](https://www.rust-lang.org)
 [![MIT License](https://img.shields.io/github/license/jwodder/ratsnake.svg)](https://opensource.org/licenses/MIT)
 
-[GitHub](https://github.com/jwodder/ratsnake) | [Issues](https://github.com/jwodder/ratsnake/issues)
-
 `ratsnake` is an implementation of the video game [Snake][] in [Rust][] built
 using the [Ratatui][] library.  Move the snake around with arrow keys,
 <kbd>h</kbd>/<kbd>j</kbd>/<kbd>k</kbd>/<kbd>l</kbd>, or
