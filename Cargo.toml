@@ -12,12 +12,9 @@ exclude = ["/.*"]
 publish = false
 
 [dependencies]
-#anyhow = "1.0.75"
-crossterm = { version = "0.29.0", default-features = false, features = ["events", "windows"] }
+crossterm = { version = "0.29.0", default-features = false, features = ["derive-more", "events", "windows"] }
 rand = "0.9.1"
-#lexopt = "0.3.0"
 ratatui = { version = "0.29.0", default-features = false, features = ["crossterm"] }
-#thiserror = "2.0.11"
 
 [dev-dependencies]
 
