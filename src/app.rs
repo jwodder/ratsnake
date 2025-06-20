@@ -50,7 +50,12 @@ impl<R: Rng> App<R> {
     pub(crate) fn run<B: Backend>(mut self, mut terminal: Terminal<B>) -> io::Result<()> {
         while !self.quitting() {
             self.draw(&mut terminal)?;
-            self.tick()?;
+            if self.dead() {
+                while !read()?.is_key_press() {}
+                break;
+            } else {
+                self.tick()?;
+            }
         }
         Ok(())
     }
@@ -61,7 +66,7 @@ impl<R: Rng> App<R> {
             let now = Instant::now();
             if poll(wait)? {
                 self.handle_event(read()?);
-                if self.quitting {
+                if self.quitting() {
                     return Ok(());
                 }
                 wait = wait.saturating_sub(now.elapsed());
