@@ -51,15 +51,12 @@ impl<R: Rng> App<R> {
         while !self.quitting() {
             self.draw(&mut terminal)?;
             if self.dead() {
-                if matches!(
-                    read()?.as_key_press_event(),
-                    Some(KeyEvent {
-                        code: KeyCode::Enter,
-                        modifiers: KeyModifiers::NONE,
-                        ..
-                    })
-                ) {
-                    break;
+                if let Some(ev) = read()?.as_key_press_event() {
+                    if ev == KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)
+                        || ev == KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL)
+                    {
+                        break;
+                    }
                 }
             } else {
                 self.tick()?;
