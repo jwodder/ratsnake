@@ -157,7 +157,6 @@ impl<R> App<R> {
                     KeyCode::Char('a' | 'h') | KeyCode::Left => self.direction = Direction::West,
                     KeyCode::Char('s' | 'j') | KeyCode::Down => self.direction = Direction::South,
                     KeyCode::Char('d' | 'l') | KeyCode::Right => self.direction = Direction::East,
-                    KeyCode::Char('q') | KeyCode::Esc => self.quitting = true,
                     _ => (),
                 }
             }
