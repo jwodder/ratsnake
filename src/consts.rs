@@ -25,4 +25,6 @@ pub(crate) const APPLE_STYLE: Style = Style::new().fg(Color::LightRed);
 
 //pub(crate) const WALL_STYLE: Style = Style::new().fg(Color::Yellow);
 
-pub(crate) const COLLISION_STYLE: Style = Style::new().add_modifier(Modifier::REVERSED);
+pub(crate) const COLLISION_STYLE: Style = Style::new()
+    .fg(Color::LightRed)
+    .add_modifier(Modifier::REVERSED);
