@@ -2,7 +2,7 @@
 name = "ratsnake"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.87"
+rust-version = "1.74"
 description = "Snake game in Rust+Ratatui"
 authors = ["John Thorvald Wodder II <ratsnake@varonathe.org>"]
 repository = "https://github.com/jwodder/ratsnake"
