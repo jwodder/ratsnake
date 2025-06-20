@@ -226,24 +226,15 @@ impl<R> Widget for &App<R> {
         }
         if self.dead() {
             let y = block_area.bottom();
-            Span::from("Oh dear, you are dead!").render(
+            Span::from("Oh dear, you are dead!  Press ENTER to exit.").render(
                 Rect {
+                    x: block_area.x,
                     y,
                     height: 1,
-                    ..block_area
+                    width: 45,
                 },
                 buf,
             );
-            if let Some(y) = y.checked_add(1) {
-                Span::from("Press ENTER to exit.").render(
-                    Rect {
-                        y,
-                        height: 1,
-                        ..block_area
-                    },
-                    buf,
-                );
-            }
         }
     }
 }
