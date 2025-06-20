@@ -1,6 +1,6 @@
 [![Project Status: Concept – Minimal or no implementation has been done yet, or the repository is only intended to be a limited example, demo, or proof-of-concept.](https://www.repostatus.org/badges/latest/concept.svg)](https://www.repostatus.org/#concept)
 [![CI Status](https://github.com/jwodder/ratsnake/actions/workflows/test.yml/badge.svg)](https://github.com/jwodder/ratsnake/actions/workflows/test.yml) <!-- [![codecov.io](https://codecov.io/gh/jwodder/ratsnake/branch/main/graph/badge.svg)](https://codecov.io/gh/jwodder/ratsnake) -->
-[![Minimum Supported Rust Version](https://img.shields.io/badge/MSRV-1.75-orange)](https://www.rust-lang.org)
+[![Minimum Supported Rust Version](https://img.shields.io/badge/MSRV-1.74-orange)](https://www.rust-lang.org)
 [![MIT License](https://img.shields.io/github/license/jwodder/ratsnake.svg)](https://opensource.org/licenses/MIT)
 
 [GitHub](https://github.com/jwodder/ratsnake) | [Issues](https://github.com/jwodder/ratsnake/issues)

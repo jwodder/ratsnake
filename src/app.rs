@@ -51,8 +51,16 @@ impl<R: Rng> App<R> {
         while !self.quitting() {
             self.draw(&mut terminal)?;
             if self.dead() {
-                while !read()?.is_key_press() {}
-                break;
+                if matches!(
+                    read()?.as_key_press_event(),
+                    Some(KeyEvent {
+                        code: KeyCode::Enter,
+                        modifiers: KeyModifiers::NONE,
+                        ..
+                    })
+                ) {
+                    break;
+                }
             } else {
                 self.tick()?;
             }
@@ -154,7 +162,7 @@ impl<R> App<R> {
             code, modifiers, ..
         }) = event.as_key_press_event()
         {
-            if self.dead() || (modifiers, code) == (KeyModifiers::CONTROL, KeyCode::Char('c')) {
+            if (modifiers, code) == (KeyModifiers::CONTROL, KeyCode::Char('c')) {
                 self.quitting = true;
             } else if normal_modifiers.contains(modifiers) {
                 match code {
@@ -226,6 +234,16 @@ impl<R> Widget for &App<R> {
                 },
                 buf,
             );
+            if let Some(y) = y.checked_add(1) {
+                Span::from("Press ENTER to exit.").render(
+                    Rect {
+                        y,
+                        height: 1,
+                        ..block_area
+                    },
+                    buf,
+                );
+            }
         }
     }
 }
