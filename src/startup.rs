@@ -112,7 +112,7 @@ impl Widget for &StartupScreen {
             .areas(display);
         logo_area.height = Logo::HEIGHT;
         Logo.render(logo_area, buf);
-        let mut y = Logo::HEIGHT + 1;
+        let mut y = logo_area.bottom() + 1;
         let [instructions_area] = Layout::horizontal([INSTRUCTIONS_WIDTH])
             .flex(Flex::Center)
             .areas(Rect {
