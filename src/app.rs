@@ -31,17 +31,18 @@ pub(crate) struct App<R> {
 
 impl<R: Rng> App<R> {
     pub(crate) fn new(rng: R) -> App<R> {
+        let level_size = consts::LEVEL_SIZE;
         let mut app = App {
             rng,
             score: 0,
-            snake_head: Position::new(20, 10),
+            snake_head: Position::new(level_size.width / 2, level_size.height / 2),
             snake_body: VecDeque::new(),
             snake_len: consts::INITIAL_SNAKE_LENGTH,
             direction: Direction::North,
             fruit: None,
             collision: None,
             quitting: false,
-            level_size: Size::new(40, 20),
+            level_size,
         };
         app.place_fruit();
         app
