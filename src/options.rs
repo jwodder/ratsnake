@@ -73,7 +73,7 @@ impl fmt::Display for LevelSize {
             LevelSize::Medium => "Medium",
             LevelSize::Large => "Large",
         };
-        write!(f, "{name}")
+        f.pad(name)
     }
 }
 
