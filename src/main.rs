@@ -1,5 +1,6 @@
 mod app;
 mod consts;
+mod game;
 mod util;
 use crate::app::App;
 use std::io::{self, ErrorKind};
@@ -7,7 +8,7 @@ use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let terminal = ratatui::init();
-    let r = App::new(rand::rng()).run(terminal);
+    let r = App::new().run(terminal);
     ratatui::restore();
     io_exit(r)
 }
