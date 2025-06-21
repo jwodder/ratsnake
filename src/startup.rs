@@ -409,33 +409,33 @@ mod tests {
             let mut buffer = Buffer::empty(area);
             startup.render(area, &mut buffer);
             let mut expected = Buffer::with_lines([
-                "                   ____       _   ____              _                           ",
-                r"                  |  _ \ __ _| |_/ ___| _ __   __ _| | _____                    ",
-                r"                  | |_) / _` | __\___ \| '_ \ / _` | |/ / _ \                   ",
-                "                  |  _ < (_| | |_ ___) | | | | (_| |   <  __/                   ",
-                r"                  |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|                   ",
+                "                    ____       _   ____              _                          ",
+                r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
+                r"                   | |_) / _` | __\___ \| '_ \ / _` | |/ / _ \                  ",
+                "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
+                r"                   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|                  ",
                 "                                                                                ",
-                "                               Move the snake with:                             ",
-                "                                      ← ↓ ↑ →                                   ",
-                "                                  or: h j k l                                   ",
-                "                                  or: a s w d                                   ",
-                "                               Eat the fruit, but                               ",
-                "                               don't hit yourself!                              ",
+                "                              Move the snake with:                              ",
+                "                                     ← ↓ ↑ →                                    ",
+                "                                 or: h j k l                                    ",
+                "                                 or: a s w d                                    ",
+                "                              Eat the fruit, but                                ",
+                "                              don't hit yourself!                               ",
                 "                                                                                ",
                 "                                 [New Game (n)]                                 ",
                 "                                                                                ",
-                "                           ┌ Options: ────────────────┐                         ",
-                "                           │   Wraparound     [ ]     │                         ",
-                "                           │   Obstacles      [ ]     │                         ",
-                "                           │   Fruits      ◁   1    ▶ │                         ",
-                "                           │   Level Size  ◀ Large  ▷ │                         ",
-                "                           └──────────────────────────┘                         ",
+                "                          ┌ Options: ────────────────┐                          ",
+                "                          │   Wraparound     [ ]     │                          ",
+                "                          │   Obstacles      [ ]     │                          ",
+                "                          │   Fruits      ◁   1    ▶ │                          ",
+                "                          │   Level Size  ◀ Large  ▷ │                          ",
+                "                          └──────────────────────────┘                          ",
                 "                                                                                ",
-                "                                  [Quit (q)]                                    ",
+                "                                   [Quit (q)]                                   ",
                 "                                                                                ",
             ]);
-            expected.set_style(Rect::new(18, 0, 15, 5), consts::FRUIT_STYLE);
-            expected.set_style(Rect::new(33, 0, 28, 5), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
+            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(33, 13, 14, 1), consts::MENU_SELECTION_STYLE);
             assert_eq!(buffer, expected);
         }
