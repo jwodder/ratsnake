@@ -1,7 +1,15 @@
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::{
+    layout::Size,
+    style::{Color, Modifier, Style},
+};
 use std::time::Duration;
 
 pub(crate) const TICK_DURATION: Duration = Duration::from_millis(200);
+
+pub(crate) const LEVEL_SIZE: Size = Size {
+    width: 76,
+    height: 19,
+};
 
 /// Maximum snake length before any fruits have been eaten
 pub(crate) const INITIAL_SNAKE_LENGTH: usize = 3;
