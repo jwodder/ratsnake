@@ -33,7 +33,7 @@ pub(crate) const SNAKE_STYLE: Style = Style::new().fg(Color::LightGreen);
 
 pub(crate) const FRUIT_STYLE: Style = Style::new().fg(Color::LightRed);
 
-pub(crate) const OBSTACLE_STYLE: Style = Style::new().fg(Color::Yellow);
+pub(crate) const OBSTACLE_STYLE: Style = Style::new().fg(Color::Gray);
 
 pub(crate) const COLLISION_STYLE: Style = Style::new()
     .fg(Color::LightRed)
