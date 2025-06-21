@@ -439,6 +439,200 @@ mod tests {
             expected.set_style(Rect::new(33, 13, 14, 1), consts::MENU_SELECTION_STYLE);
             assert_eq!(buffer, expected);
         }
+
+        #[test]
+        fn interact_options() {
+            let area = Rect::new(0, 0, 80, 24);
+            let mut startup = StartupScreen::new(Options::default());
+            assert!(startup
+                .handle_event(Event::Key(KeyCode::Down.into()))
+                .is_none());
+            let mut buffer = Buffer::empty(area);
+            startup.render(area, &mut buffer);
+            let mut expected = Buffer::with_lines([
+                "                    ____       _   ____              _                          ",
+                r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
+                r"                   | |_) / _` | __\___ \| '_ \ / _` | |/ / _ \                  ",
+                "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
+                r"                   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|                  ",
+                "                                                                                ",
+                "                              Move the snake with:                              ",
+                "                                     ← ↓ ↑ →                                    ",
+                "                                 or: h j k l                                    ",
+                "                                 or: a s w d                                    ",
+                "                              Eat the fruit, but                                ",
+                "                              don't hit yourself!                               ",
+                "                                                                                ",
+                "                                 [New Game (n)]                                 ",
+                "                                                                                ",
+                "                          ┌ Options: ────────────────┐                          ",
+                "                          │ » Wraparound     [ ]     │                          ",
+                "                          │   Obstacles      [ ]     │                          ",
+                "                          │   Fruits      ◁   1    ▶ │                          ",
+                "                          │   Level Size  ◀ Large  ▷ │                          ",
+                "                          └──────────────────────────┘                          ",
+                "                                                                                ",
+                "                                   [Quit (q)]                                   ",
+                "                                                                                ",
+            ]);
+            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
+            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(28, 16, 24, 1), consts::MENU_SELECTION_STYLE);
+            assert_eq!(buffer, expected);
+
+            assert!(startup
+                .handle_event(Event::Key(KeyCode::Char(' ').into()))
+                .is_none());
+            let mut buffer = Buffer::empty(area);
+            startup.render(area, &mut buffer);
+            let mut expected = Buffer::with_lines([
+                "                    ____       _   ____              _                          ",
+                r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
+                r"                   | |_) / _` | __\___ \| '_ \ / _` | |/ / _ \                  ",
+                "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
+                r"                   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|                  ",
+                "                                                                                ",
+                "                              Move the snake with:                              ",
+                "                                     ← ↓ ↑ →                                    ",
+                "                                 or: h j k l                                    ",
+                "                                 or: a s w d                                    ",
+                "                              Eat the fruit, but                                ",
+                "                              don't hit yourself!                               ",
+                "                                                                                ",
+                "                                 [New Game (n)]                                 ",
+                "                                                                                ",
+                "                          ┌ Options: ────────────────┐                          ",
+                "                          │ » Wraparound     [✓]     │                          ",
+                "                          │   Obstacles      [ ]     │                          ",
+                "                          │   Fruits      ◁   1    ▶ │                          ",
+                "                          │   Level Size  ◀ Large  ▷ │                          ",
+                "                          └──────────────────────────┘                          ",
+                "                                                                                ",
+                "                                   [Quit (q)]                                   ",
+                "                                                                                ",
+            ]);
+            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
+            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(28, 16, 24, 1), consts::MENU_SELECTION_STYLE);
+            assert_eq!(buffer, expected);
+
+            assert!(startup
+                .handle_event(Event::Key(KeyCode::Down.into()))
+                .is_none());
+            assert!(startup
+                .handle_event(Event::Key(KeyCode::Down.into()))
+                .is_none());
+            assert!(startup
+                .handle_event(Event::Key(KeyCode::Down.into()))
+                .is_none());
+            assert!(startup
+                .handle_event(Event::Key(KeyCode::Char(' ').into()))
+                .is_none());
+            let mut buffer = Buffer::empty(area);
+            startup.render(area, &mut buffer);
+            let mut expected = Buffer::with_lines([
+                "                    ____       _   ____              _                          ",
+                r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
+                r"                   | |_) / _` | __\___ \| '_ \ / _` | |/ / _ \                  ",
+                "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
+                r"                   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|                  ",
+                "                                                                                ",
+                "                              Move the snake with:                              ",
+                "                                     ← ↓ ↑ →                                    ",
+                "                                 or: h j k l                                    ",
+                "                                 or: a s w d                                    ",
+                "                              Eat the fruit, but                                ",
+                "                              don't hit yourself!                               ",
+                "                                                                                ",
+                "                                 [New Game (n)]                                 ",
+                "                                                                                ",
+                "                          ┌ Options: ────────────────┐                          ",
+                "                          │   Wraparound     [✓]     │                          ",
+                "                          │   Obstacles      [ ]     │                          ",
+                "                          │   Fruits      ◁   1    ▶ │                          ",
+                "                          │ » Level Size  ◀ Large  ▷ │                          ",
+                "                          └──────────────────────────┘                          ",
+                "                                                                                ",
+                "                                   [Quit (q)]                                   ",
+                "                                                                                ",
+            ]);
+            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
+            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(28, 19, 24, 1), consts::MENU_SELECTION_STYLE);
+            assert_eq!(buffer, expected);
+
+            assert!(startup
+                .handle_event(Event::Key(KeyCode::Left.into()))
+                .is_none());
+            let mut buffer = Buffer::empty(area);
+            startup.render(area, &mut buffer);
+            let mut expected = Buffer::with_lines([
+                "                    ____       _   ____              _                          ",
+                r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
+                r"                   | |_) / _` | __\___ \| '_ \ / _` | |/ / _ \                  ",
+                "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
+                r"                   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|                  ",
+                "                                                                                ",
+                "                              Move the snake with:                              ",
+                "                                     ← ↓ ↑ →                                    ",
+                "                                 or: h j k l                                    ",
+                "                                 or: a s w d                                    ",
+                "                              Eat the fruit, but                                ",
+                "                              don't hit yourself!                               ",
+                "                                                                                ",
+                "                                 [New Game (n)]                                 ",
+                "                                                                                ",
+                "                          ┌ Options: ────────────────┐                          ",
+                "                          │   Wraparound     [✓]     │                          ",
+                "                          │   Obstacles      [ ]     │                          ",
+                "                          │   Fruits      ◁   1    ▶ │                          ",
+                "                          │ » Level Size  ◀ Medium ▶ │                          ",
+                "                          └──────────────────────────┘                          ",
+                "                                                                                ",
+                "                                   [Quit (q)]                                   ",
+                "                                                                                ",
+            ]);
+            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
+            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(28, 19, 24, 1), consts::MENU_SELECTION_STYLE);
+            assert_eq!(buffer, expected);
+
+            assert!(startup
+                .handle_event(Event::Key(KeyCode::Left.into()))
+                .is_none());
+            let mut buffer = Buffer::empty(area);
+            startup.render(area, &mut buffer);
+            let mut expected = Buffer::with_lines([
+                "                    ____       _   ____              _                          ",
+                r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
+                r"                   | |_) / _` | __\___ \| '_ \ / _` | |/ / _ \                  ",
+                "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
+                r"                   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|                  ",
+                "                                                                                ",
+                "                              Move the snake with:                              ",
+                "                                     ← ↓ ↑ →                                    ",
+                "                                 or: h j k l                                    ",
+                "                                 or: a s w d                                    ",
+                "                              Eat the fruit, but                                ",
+                "                              don't hit yourself!                               ",
+                "                                                                                ",
+                "                                 [New Game (n)]                                 ",
+                "                                                                                ",
+                "                          ┌ Options: ────────────────┐                          ",
+                "                          │   Wraparound     [✓]     │                          ",
+                "                          │   Obstacles      [ ]     │                          ",
+                "                          │   Fruits      ◁   1    ▶ │                          ",
+                "                          │ » Level Size  ◁ Small  ▶ │                          ",
+                "                          └──────────────────────────┘                          ",
+                "                                                                                ",
+                "                                   [Quit (q)]                                   ",
+                "                                                                                ",
+            ]);
+            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
+            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(28, 19, 24, 1), consts::MENU_SELECTION_STYLE);
+            assert_eq!(buffer, expected);
+        }
     }
 
     mod options_menu {
