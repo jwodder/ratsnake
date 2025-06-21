@@ -265,3 +265,116 @@ enum Direction {
     South,
     West,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha12Rng;
+
+    const RNG_SEED: u64 = 0x0123456789ABCDEF;
+
+    #[test]
+    fn draw_startup() {
+        let app = App::new(ChaCha12Rng::seed_from_u64(RNG_SEED));
+        let area = Rect::new(0, 0, 80, 24);
+        let mut buffer = Buffer::empty(area);
+        app.render(area, &mut buffer);
+        let mut expected = Buffer::with_lines([
+            "",
+            " Score: 0",
+            " ┌────────────────────────────────────────────────────────────────────────────┐ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                          ●                                                 │ ",
+            " │                                      @                                     │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " └────────────────────────────────────────────────────────────────────────────┘ ",
+            "",
+        ]);
+        expected.set_style(Rect::new(40, 12, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(28, 11, 1, 1), consts::FRUIT_STYLE);
+        assert_eq!(buffer, expected);
+    }
+
+    #[test]
+    fn draw_self_collision() {
+        let mut app = App::new(ChaCha12Rng::seed_from_u64(RNG_SEED));
+        app.score = 3;
+        app.snake_head = Position::new(30, 6);
+        app.snake_body = VecDeque::from([
+            Position::new(30, 6),
+            Position::new(31, 6),
+            Position::new(32, 6),
+            Position::new(33, 6),
+            Position::new(33, 7),
+            Position::new(33, 8),
+            Position::new(33, 9),
+            Position::new(32, 9),
+            Position::new(31, 9),
+            Position::new(30, 9),
+            Position::new(30, 8),
+            Position::new(30, 7),
+        ]);
+        app.snake_len = 12;
+        app.direction = Direction::North;
+        app.collision = Some(Position::new(30, 6));
+        let area = Rect::new(0, 0, 80, 24);
+        let mut buffer = Buffer::empty(area);
+        app.render(area, &mut buffer);
+        let mut expected = Buffer::with_lines([
+            "",
+            " Score: 3",
+            " ┌────────────────────────────────────────────────────────────────────────────┐ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                              *~~~                                          │ ",
+            " │                              ~  ~                                          │ ",
+            " │                          ●   ~  ~                                          │ ",
+            " │                              ~~~~                                          │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " └────────────────────────────────────────────────────────────────────────────┘ ",
+            " Oh dear, you are dead!  Press ENTER to exit.",
+        ]);
+        expected.set_style(Rect::new(32, 9, 1, 1), consts::COLLISION_STYLE);
+        expected.set_style(Rect::new(33, 9, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(34, 9, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(35, 9, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(35, 10, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(35, 11, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(35, 12, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(34, 12, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(33, 12, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(32, 12, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(32, 11, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(32, 10, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(28, 11, 1, 1), consts::FRUIT_STYLE);
+        assert_eq!(buffer, expected);
+    }
+}

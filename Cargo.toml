@@ -17,6 +17,7 @@ rand = "0.9.1"
 ratatui = { version = "0.29.0", default-features = false, features = ["crossterm"] }
 
 [dev-dependencies]
+rand_chacha = "0.9.0"
 
 [lints.rust]
 # Lint groups:
