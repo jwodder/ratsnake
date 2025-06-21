@@ -22,7 +22,7 @@ pub(crate) struct App<R> {
     snake_body: VecDeque<Position>,
     snake_len: usize,
     direction: Direction,
-    apple: Option<Position>,
+    fruit: Option<Position>,
     collision: Option<Position>,
     quitting: bool,
     level_size: Size,
@@ -38,12 +38,12 @@ impl<R: Rng> App<R> {
             snake_body: VecDeque::new(),
             snake_len: consts::INITIAL_SNAKE_LENGTH,
             direction: Direction::North,
-            apple: None,
+            fruit: None,
             collision: None,
             quitting: false,
             level_size: Size::new(40, 20),
         };
-        app.plant_apple();
+        app.place_fruit();
         app
     }
 
@@ -127,19 +127,19 @@ impl<R: Rng> App<R> {
         while self.snake_body.len() > self.snake_len {
             let _ = self.snake_body.pop_front();
         }
-        if Some(self.snake_head) == self.apple {
-            self.apple = None;
+        if Some(self.snake_head) == self.fruit {
+            self.fruit = None;
             self.score += 1;
             self.snake_len += consts::SNAKE_GROWTH;
-            self.plant_apple();
+            self.place_fruit();
         } else if self.snake_body.contains(&self.snake_head) {
             self.collision = Some(self.snake_head);
         }
         // TODO later: Check for collision with walls
     }
 
-    fn plant_apple(&mut self) {
-        self.apple = Rect::from((Position::ORIGIN, self.level_size))
+    fn place_fruit(&mut self) {
+        self.fruit = Rect::from((Position::ORIGIN, self.level_size))
             .positions()
             // TODO later: exclude walls from consideration
             .filter(|&p| p != self.snake_head && !self.snake_body.contains(&p))
@@ -203,8 +203,8 @@ impl<R> Widget for &App<R> {
         for &p in &self.snake_body {
             level.draw_cell(p, consts::SNAKE_BODY_SYMBOL, consts::SNAKE_STYLE);
         }
-        if let Some(pos) = self.apple {
-            level.draw_cell(pos, consts::APPLE_SYMBOL, consts::APPLE_STYLE);
+        if let Some(pos) = self.fruit {
+            level.draw_cell(pos, consts::FRUIT_SYMBOL, consts::FRUIT_STYLE);
         }
         // TODO later: Draw walls
         if let Some(pos) = self.collision {
