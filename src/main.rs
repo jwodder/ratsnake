@@ -2,6 +2,7 @@ mod app;
 mod consts;
 mod game;
 mod logo;
+mod options;
 mod util;
 use crate::app::App;
 use std::io::{self, ErrorKind};
