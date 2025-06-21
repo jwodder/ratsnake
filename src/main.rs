@@ -1,5 +1,6 @@
 mod app;
 mod consts;
+mod util;
 use crate::app::App;
 use std::io::{self, ErrorKind};
 use std::process::ExitCode;
