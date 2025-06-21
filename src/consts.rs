@@ -16,6 +16,8 @@ pub(crate) const LEVEL_SIZE: Size = Size {
     height: 19,
 };
 
+pub(crate) const MAX_FRUITS: usize = 10;
+
 /// Maximum snake length before any fruits have been eaten
 pub(crate) const INITIAL_SNAKE_LENGTH: usize = 3;
 
@@ -41,3 +43,5 @@ pub(crate) const FRUIT_STYLE: Style = Style::new().fg(Color::LightRed);
 pub(crate) const COLLISION_STYLE: Style = Style::new()
     .fg(Color::LightRed)
     .add_modifier(Modifier::REVERSED);
+
+pub(crate) const MENU_SELECTION_STYLE: Style = Style::new().add_modifier(Modifier::UNDERLINED);

@@ -94,4 +94,24 @@ mod tests {
         expected.set_style(Rect::new(18, 2, 25, 3), consts::SNAKE_STYLE);
         assert_eq!(buffer, expected);
     }
+
+    #[test]
+    fn rat_width() {
+        assert!(RAT
+            .iter()
+            .all(|ln| ln.len() == usize::from(Logo::RAT_WIDTH)));
+    }
+
+    #[test]
+    fn snake_width() {
+        assert!(SNAKE
+            .iter()
+            .all(|ln| ln.len() == usize::from(Logo::SNAKE_WIDTH)));
+    }
+
+    #[test]
+    fn height() {
+        assert_eq!(RAT.len(), usize::from(Logo::HEIGHT));
+        assert_eq!(SNAKE.len(), usize::from(Logo::HEIGHT));
+    }
 }

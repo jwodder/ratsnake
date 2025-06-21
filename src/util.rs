@@ -1,4 +1,5 @@
-use ratatui::layout::Rect;
+use crate::consts;
+use ratatui::layout::{Flex, Layout, Rect};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Side {
@@ -36,6 +37,16 @@ impl RectExt for Rect {
             self
         }
     }
+}
+
+pub(crate) fn get_display_area(buffer_area: Rect) -> Rect {
+    let [display] = Layout::horizontal([consts::DISPLAY_SIZE.width])
+        .flex(Flex::Center)
+        .areas(buffer_area);
+    let [display] = Layout::vertical([consts::DISPLAY_SIZE.height])
+        .flex(Flex::Center)
+        .areas(display);
+    display
 }
 
 #[cfg(test)]

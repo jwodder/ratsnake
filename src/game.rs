@@ -1,11 +1,12 @@
 use crate::app::AppState;
 use crate::consts;
-use crate::util::{RectExt, Side};
+use crate::options::Options;
+use crate::util::{get_display_area, RectExt, Side};
 use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
 use rand::{seq::IteratorRandom, Rng};
 use ratatui::{
     buffer::Buffer,
-    layout::{Flex, Layout, Margin, Position, Rect, Size},
+    layout::{Margin, Position, Rect, Size},
     style::Style,
     text::Span,
     widgets::{Block, Widget},
@@ -16,7 +17,7 @@ use std::io;
 use std::time::Instant;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct Game<R> {
+pub(crate) struct Game<R = rand::rngs::ThreadRng> {
     rng: R,
     score: u32,
     snake_head: Position,
@@ -30,7 +31,8 @@ pub(crate) struct Game<R> {
 }
 
 impl<R: Rng> Game<R> {
-    pub(crate) fn new(rng: R) -> Game<R> {
+    pub(crate) fn new(options: Options, rng: R) -> Game<R> {
+        // TODO: Use options
         let level_size = consts::LEVEL_SIZE;
         let mut game = Game {
             rng,
@@ -176,13 +178,7 @@ impl<R> Game<R> {
 
 impl<R> Widget for &Game<R> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let [display] = Layout::horizontal([consts::DISPLAY_SIZE.width])
-            .flex(Flex::Center)
-            .areas(area);
-        let [display] = Layout::vertical([consts::DISPLAY_SIZE.height])
-            .flex(Flex::Center)
-            .areas(display);
-        let display = display.shave(Side::Left).shave(Side::Right);
+        let display = get_display_area(area).shave(Side::Left).shave(Side::Right);
         Span::from(format!("Score: {}", self.score)).render(
             Rect {
                 height: 1,
@@ -278,7 +274,7 @@ mod tests {
 
     #[test]
     fn draw_startup() {
-        let game = Game::new(ChaCha12Rng::seed_from_u64(RNG_SEED));
+        let game = Game::new(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
         game.render(area, &mut buffer);
@@ -315,7 +311,7 @@ mod tests {
 
     #[test]
     fn draw_self_collision() {
-        let mut game = Game::new(ChaCha12Rng::seed_from_u64(RNG_SEED));
+        let mut game = Game::new(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
         game.score = 3;
         game.snake_head = Position::new(30, 6);
         game.snake_body = VecDeque::from([
