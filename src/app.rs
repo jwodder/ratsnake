@@ -1,4 +1,5 @@
 use crate::consts;
+use crate::util::{RectExt, Side};
 use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
 use rand::{seq::IteratorRandom, Rng};
 use ratatui::{
@@ -185,12 +186,24 @@ impl<R> App<R> {
 
 impl<R> Widget for &App<R> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let [block_area] = Layout::horizontal([self.level_size.width.saturating_add(2)])
+        let [display] = Layout::horizontal([consts::DISPLAY_SIZE.width])
             .flex(Flex::Center)
             .areas(area);
-        let [block_area] = Layout::vertical([self.level_size.height.saturating_add(2)])
+        let [display] = Layout::vertical([consts::DISPLAY_SIZE.height])
             .flex(Flex::Center)
-            .areas(block_area);
+            .areas(display);
+        let display = display.shave(Side::Left).shave(Side::Right);
+        Span::from(format!("Score: {}", self.score)).render(
+            Rect {
+                height: 1,
+                ..display
+            },
+            buf,
+        );
+        let block_area = display
+            .shave(Side::Top)
+            .shave(Side::Bottom)
+            .shave(Side::Bottom);
         let level_area = block_area.inner(Margin::new(1, 1));
         let mut level = Canvas {
             area: level_area,
@@ -212,27 +225,26 @@ impl<R> Widget for &App<R> {
             level.draw_cell(pos, consts::COLLISION_SYMBOL, consts::COLLISION_STYLE);
         }
         Block::bordered().render(block_area, buf);
-        if let Some(y) = block_area.y.checked_sub(1) {
-            Span::from(format!("Score: {}", self.score)).render(
-                Rect {
-                    y,
-                    height: 1,
-                    ..block_area
-                },
-                buf,
-            );
-        }
         if self.dead() {
             let y = block_area.bottom();
-            Span::from("Oh dear, you are dead!  Press ENTER to exit.").render(
+            Span::from("Oh dear, you are dead!").render(
                 Rect {
-                    x: block_area.x,
                     y,
                     height: 1,
-                    width: 45,
+                    ..display
                 },
                 buf,
             );
+            if let Some(y) = y.checked_add(1) {
+                Span::from("Press ENTER to exit.").render(
+                    Rect {
+                        y,
+                        height: 1,
+                        ..display
+                    },
+                    buf,
+                );
+            }
         }
     }
 }
@@ -281,7 +293,6 @@ mod tests {
         let mut buffer = Buffer::empty(area);
         app.render(area, &mut buffer);
         let mut expected = Buffer::with_lines([
-            "",
             " Score: 0",
             " ┌────────────────────────────────────────────────────────────────────────────┐ ",
             " │                                                                            │ ",
@@ -305,9 +316,10 @@ mod tests {
             " │                                                                            │ ",
             " └────────────────────────────────────────────────────────────────────────────┘ ",
             "",
+            "",
         ]);
-        expected.set_style(Rect::new(40, 12, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(28, 11, 1, 1), consts::FRUIT_STYLE);
+        expected.set_style(Rect::new(40, 11, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
         assert_eq!(buffer, expected);
     }
 
@@ -337,7 +349,6 @@ mod tests {
         let mut buffer = Buffer::empty(area);
         app.render(area, &mut buffer);
         let mut expected = Buffer::with_lines([
-            "",
             " Score: 3",
             " ┌────────────────────────────────────────────────────────────────────────────┐ ",
             " │                                                                            │ ",
@@ -360,21 +371,22 @@ mod tests {
             " │                                                                            │ ",
             " │                                                                            │ ",
             " └────────────────────────────────────────────────────────────────────────────┘ ",
-            " Oh dear, you are dead!  Press ENTER to exit.",
+            " Oh dear, you are dead!",
+            " Press ENTER to exit.",
         ]);
-        expected.set_style(Rect::new(32, 9, 1, 1), consts::COLLISION_STYLE);
-        expected.set_style(Rect::new(33, 9, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(34, 9, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(32, 8, 1, 1), consts::COLLISION_STYLE);
+        expected.set_style(Rect::new(33, 8, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(34, 8, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(35, 8, 1, 1), consts::SNAKE_STYLE);
         expected.set_style(Rect::new(35, 9, 1, 1), consts::SNAKE_STYLE);
         expected.set_style(Rect::new(35, 10, 1, 1), consts::SNAKE_STYLE);
         expected.set_style(Rect::new(35, 11, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(35, 12, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(34, 12, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(33, 12, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(32, 12, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(34, 11, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(33, 11, 1, 1), consts::SNAKE_STYLE);
         expected.set_style(Rect::new(32, 11, 1, 1), consts::SNAKE_STYLE);
         expected.set_style(Rect::new(32, 10, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(28, 11, 1, 1), consts::FRUIT_STYLE);
+        expected.set_style(Rect::new(32, 9, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
         assert_eq!(buffer, expected);
     }
 }
