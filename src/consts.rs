@@ -11,11 +11,6 @@ pub(crate) const DISPLAY_SIZE: Size = Size {
     height: 24,
 };
 
-pub(crate) const LEVEL_SIZE: Size = Size {
-    width: 76,
-    height: 19,
-};
-
 pub(crate) const MAX_FRUITS: usize = 10;
 
 /// Maximum snake length before any fruits have been eaten
@@ -30,7 +25,7 @@ pub(crate) const SNAKE_BODY_SYMBOL: char = '~';
 
 pub(crate) const FRUIT_SYMBOL: char = '\u{25CF}';
 
-//pub(crate) const WALL_SYMBOL: char = '\u{2588}';
+pub(crate) const OBSTACLE_SYMBOL: char = '\u{2588}';
 
 pub(crate) const COLLISION_SYMBOL: char = '*';
 
@@ -38,10 +33,20 @@ pub(crate) const SNAKE_STYLE: Style = Style::new().fg(Color::LightGreen);
 
 pub(crate) const FRUIT_STYLE: Style = Style::new().fg(Color::LightRed);
 
-//pub(crate) const WALL_STYLE: Style = Style::new().fg(Color::Yellow);
+pub(crate) const OBSTACLE_STYLE: Style = Style::new().fg(Color::Yellow);
 
 pub(crate) const COLLISION_STYLE: Style = Style::new()
     .fg(Color::LightRed)
     .add_modifier(Modifier::REVERSED);
 
 pub(crate) const MENU_SELECTION_STYLE: Style = Style::new().add_modifier(Modifier::UNDERLINED);
+
+pub(crate) const OBSTACLE_PROBABILITY: f64 = 0.031415926535;
+
+/// When creating a level with random obstacles, remove any obstacles behind
+/// the snake's head this many cells backwards.
+pub(crate) const BACKWARDS_CLEARANCE: usize = 3;
+
+/// When creating a level with random obstacles, remove any obstacles in front
+/// of the snake's head this many cells forwards.
+pub(crate) const FORWARDS_CLEARANCE: usize = 7;

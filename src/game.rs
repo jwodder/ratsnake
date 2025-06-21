@@ -3,7 +3,11 @@ use crate::consts;
 use crate::options::Options;
 use crate::util::{get_display_area, RectExt, Side};
 use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
-use rand::{seq::IteratorRandom, Rng};
+use rand::{
+    distr::{Bernoulli, Distribution},
+    seq::IteratorRandom,
+    Rng,
+};
 use ratatui::{
     buffer::Buffer,
     layout::{Margin, Position, Rect, Size},
@@ -12,7 +16,7 @@ use ratatui::{
     widgets::{Block, Widget},
     Frame,
 };
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use std::io;
 use std::time::Instant;
 
@@ -24,28 +28,54 @@ pub(crate) struct Game<R = rand::rngs::ThreadRng> {
     snake_body: VecDeque<Position>,
     snake_len: usize,
     direction: Direction,
-    fruit: Option<Position>,
+    fruits: HashSet<Position>,
     collision: Option<Position>,
     level_size: Size,
-    // walls: HashSet<Position>,
+    obstacles: HashSet<Position>,
 }
 
 impl<R: Rng> Game<R> {
-    pub(crate) fn new(options: Options, rng: R) -> Game<R> {
-        // TODO: Use options
-        let level_size = consts::LEVEL_SIZE;
+    pub(crate) fn new(options: Options, mut rng: R) -> Game<R> {
+        let level_size = options.level_size.as_size();
+        let snake_head = Position::new(level_size.width / 2, level_size.height / 2);
+        let obstacles = if options.obstacles {
+            let dist = Bernoulli::new(consts::OBSTACLE_PROBABILITY)
+                .expect("OBSTACLE_PROBABILITY should be between 0 and 1");
+            let mut obsts = HashSet::from_iter(
+                Rect::from((Position::ORIGIN, level_size))
+                    .positions()
+                    .zip(dist.sample_iter(&mut rng))
+                    .filter_map(|(pos, f)| f.then_some(pos)),
+            );
+            for y in std::iter::successors(Some(snake_head.y), |y| y.checked_add(1))
+                .take(consts::BACKWARDS_CLEARANCE)
+            {
+                obsts.remove(&Position::new(snake_head.x, y));
+            }
+            for y in std::iter::successors(Some(snake_head.y), |y| y.checked_sub(1))
+                .take(consts::FORWARDS_CLEARANCE)
+            {
+                obsts.remove(&Position::new(snake_head.x, y));
+            }
+            obsts
+        } else {
+            HashSet::new()
+        };
         let mut game = Game {
             rng,
             score: 0,
-            snake_head: Position::new(level_size.width / 2, level_size.height / 2),
             snake_body: VecDeque::new(),
+            snake_head,
             snake_len: consts::INITIAL_SNAKE_LENGTH,
             direction: Direction::North,
-            fruit: None,
+            fruits: HashSet::new(),
             collision: None,
             level_size,
+            obstacles,
         };
-        game.place_fruit();
+        for _ in 0..options.fruits {
+            game.place_fruit();
+        }
         game
     }
 
@@ -125,23 +155,27 @@ impl<R: Rng> Game<R> {
         while self.snake_body.len() > self.snake_len {
             let _ = self.snake_body.pop_front();
         }
-        if Some(self.snake_head) == self.fruit {
-            self.fruit = None;
+        if self.fruits.remove(&self.snake_head) {
             self.score += 1;
             self.snake_len += consts::SNAKE_GROWTH;
             self.place_fruit();
-        } else if self.snake_body.contains(&self.snake_head) {
+        } else if self.snake_body.contains(&self.snake_head)
+            || self.obstacles.contains(&self.snake_head)
+        {
             self.collision = Some(self.snake_head);
         }
-        // TODO later: Check for collision with walls
     }
 
     fn place_fruit(&mut self) {
-        self.fruit = Rect::from((Position::ORIGIN, self.level_size))
-            .positions()
-            // TODO later: exclude walls from consideration
-            .filter(|&p| p != self.snake_head && !self.snake_body.contains(&p))
-            .choose(&mut self.rng);
+        let mut occupied = &self.fruits | &self.obstacles;
+        occupied.insert(self.snake_head);
+        occupied.extend(self.snake_body.iter().copied());
+        self.fruits.extend(
+            Rect::from((Position::ORIGIN, self.level_size))
+                .positions()
+                .filter(move |p| !occupied.contains(p))
+                .choose(&mut self.rng),
+        );
     }
 }
 
@@ -203,10 +237,12 @@ impl<R> Widget for &Game<R> {
         for &p in &self.snake_body {
             level.draw_cell(p, consts::SNAKE_BODY_SYMBOL, consts::SNAKE_STYLE);
         }
-        if let Some(pos) = self.fruit {
+        for &pos in &self.fruits {
             level.draw_cell(pos, consts::FRUIT_SYMBOL, consts::FRUIT_STYLE);
         }
-        // TODO later: Draw walls
+        for &pos in &self.obstacles {
+            level.draw_cell(pos, consts::OBSTACLE_SYMBOL, consts::OBSTACLE_STYLE);
+        }
         if let Some(pos) = self.collision {
             level.draw_cell(pos, consts::COLLISION_SYMBOL, consts::COLLISION_STYLE);
         }
