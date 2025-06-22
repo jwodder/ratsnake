@@ -32,6 +32,7 @@ pub(crate) struct Game<R = rand::rngs::ThreadRng> {
     collision: Option<Position>,
     level_size: Size,
     obstacles: HashSet<Position>,
+    wraparound: bool,
 }
 
 impl<R: Rng> Game<R> {
@@ -72,6 +73,7 @@ impl<R: Rng> Game<R> {
             collision: None,
             level_size,
             obstacles,
+            wraparound: options.wraparound,
         };
         for _ in 0..options.fruits {
             game.place_fruit();
@@ -115,43 +117,16 @@ impl<R: Rng> Game<R> {
         if self.dead() {
             return;
         }
-        let Position { mut x, mut y } = self.snake_head;
-        match self.direction {
-            Direction::North => {
-                let Some(y2) = y.checked_sub(1) else {
-                    self.collision = Some(self.snake_head);
-                    return;
-                };
-                y = y2;
-            }
-            Direction::East => {
-                let Some(x2) = x.checked_add(1) else {
-                    self.collision = Some(self.snake_head);
-                    return;
-                };
-                x = x2;
-            }
-            Direction::South => {
-                let Some(y2) = y.checked_add(1) else {
-                    self.collision = Some(self.snake_head);
-                    return;
-                };
-                y = y2;
-            }
-            Direction::West => {
-                let Some(x2) = x.checked_sub(1) else {
-                    self.collision = Some(self.snake_head);
-                    return;
-                };
-                x = x2;
-            }
-        }
-        if x >= self.level_size.width || y >= self.level_size.height {
+        if let Some(pos) = self
+            .direction
+            .advance(self.snake_head, self.level_size, self.wraparound)
+        {
+            self.snake_body.push_back(self.snake_head);
+            self.snake_head = pos;
+        } else {
             self.collision = Some(self.snake_head);
             return;
         }
-        self.snake_body.push_back(self.snake_head);
-        self.snake_head = Position { x, y };
         while self.snake_body.len() > self.snake_len {
             let _ = self.snake_body.pop_front();
         }
@@ -246,6 +221,7 @@ impl<R> Widget for &Game<R> {
         if let Some(pos) = self.collision {
             level.draw_cell(pos, consts::COLLISION_SYMBOL, consts::COLLISION_STYLE);
         }
+        // TODO: Change border glyphs when wraparound is enabled
         Block::bordered().render(block_area, buf);
         if self.dead() {
             let y = block_area.bottom();
@@ -300,16 +276,58 @@ enum Direction {
     West,
 }
 
+impl Direction {
+    fn advance(self, pos: Position, size: Size, wraparound: bool) -> Option<Position> {
+        let Position { mut x, mut y } = pos;
+        match self {
+            Direction::North => {
+                y = decrement_in_bounds(y, size.height, wraparound)?;
+            }
+            Direction::East => {
+                x = increment_in_bounds(x, size.width, wraparound)?;
+            }
+            Direction::South => {
+                y = increment_in_bounds(y, size.height, wraparound)?;
+            }
+            Direction::West => {
+                x = decrement_in_bounds(x, size.width, wraparound)?;
+            }
+        }
+        Some(Position { x, y })
+    }
+}
+
+fn decrement_in_bounds(x: u16, max: u16, wrap: bool) -> Option<u16> {
+    if let Some(x2) = x.checked_sub(1) {
+        Some(x2)
+    } else if wrap {
+        Some(max - 1)
+    } else {
+        None
+    }
+}
+
+fn increment_in_bounds(x: u16, max: u16, wrap: bool) -> Option<u16> {
+    if let Some(x2) = x.checked_add(1).filter(|&xx| xx < max) {
+        Some(x2)
+    } else if wrap {
+        Some(0)
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use rand::SeedableRng;
     use rand_chacha::ChaCha12Rng;
+    use rstest::rstest;
 
     const RNG_SEED: u64 = 0x0123456789ABCDEF;
 
     #[test]
-    fn draw_startup() {
+    fn draw_new_game() {
         let game = Game::new(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
@@ -410,5 +428,44 @@ mod tests {
         expected.set_style(Rect::new(32, 9, 1, 1), consts::SNAKE_STYLE);
         expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
         assert_eq!(buffer, expected);
+    }
+
+    #[rstest]
+    #[case(
+        Direction::North,
+        Position::new(2, 7),
+        Size::new(10, 15),
+        false,
+        Some(Position::new(2, 6))
+    )]
+    #[case(
+        Direction::South,
+        Position::new(2, 7),
+        Size::new(10, 15),
+        false,
+        Some(Position::new(2, 8))
+    )]
+    #[case(
+        Direction::East,
+        Position::new(2, 7),
+        Size::new(10, 15),
+        false,
+        Some(Position::new(3, 7))
+    )]
+    #[case(
+        Direction::West,
+        Position::new(2, 7),
+        Size::new(10, 15),
+        false,
+        Some(Position::new(1, 7))
+    )]
+    fn test_direction_advance(
+        #[case] d: Direction,
+        #[case] pos: Position,
+        #[case] size: Size,
+        #[case] wrap: bool,
+        #[case] r: Option<Position>,
+    ) {
+        assert_eq!(d.advance(pos, size, wrap), r);
     }
 }
