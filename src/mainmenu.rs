@@ -3,7 +3,7 @@ use crate::command::Command;
 use crate::consts;
 use crate::game::Game;
 use crate::logo::Logo;
-use crate::options::{LevelSize, Options};
+use crate::options::{Adjustable, OptValue, Options};
 use crate::util::get_display_area;
 use crossterm::event::{read, Event};
 use ratatui::{
@@ -17,7 +17,6 @@ use ratatui::{
     },
     Frame,
 };
-use std::fmt;
 use std::io;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -162,7 +161,7 @@ struct OptionsMenu {
     /// Index of the currently-selected item in the menu; if the menu isn't
     /// active, this is the index of the most recently-selected item.
     selection: usize,
-    settings: [Adjustable; Self::OPTION_QTY],
+    settings: [OptValue; Self::OPTION_QTY],
 }
 
 impl OptionsMenu {
@@ -179,10 +178,10 @@ impl OptionsMenu {
 
     fn new(options: Options) -> Self {
         let settings = [
-            Adjustable::Bool(options.wraparound),
-            Adjustable::Bool(options.obstacles),
-            Adjustable::Fruits(options.fruits),
-            Adjustable::LevelSize(options.level_size),
+            OptValue::Bool(options.wraparound),
+            OptValue::Bool(options.obstacles),
+            OptValue::FruitQty(options.fruits),
+            OptValue::LevelSize(options.level_size),
         ];
         OptionsMenu {
             active: false,
@@ -192,25 +191,25 @@ impl OptionsMenu {
     }
 
     fn to_options(&self) -> Options {
-        let Adjustable::Bool(wraparound) = self.settings[0] else {
+        let OptValue::Bool(wraparound) = self.settings[0] else {
             panic!(
                 "OptionsMenu.settings[0] should be a Bool; got {:?}",
                 self.settings[0]
             );
         };
-        let Adjustable::Bool(obstacles) = self.settings[1] else {
+        let OptValue::Bool(obstacles) = self.settings[1] else {
             panic!(
                 "OptionsMenu.settings[1] should be a Bool; got {:?}",
                 self.settings[1]
             );
         };
-        let Adjustable::Fruits(fruits) = self.settings[2] else {
+        let OptValue::FruitQty(fruits) = self.settings[2] else {
             panic!(
-                "OptionsMenu.settings[2] should be a Fruits; got {:?}",
+                "OptionsMenu.settings[2] should be a FruitQty; got {:?}",
                 self.settings[2]
             );
         };
-        let Adjustable::LevelSize(level_size) = self.settings[3] else {
+        let OptValue::LevelSize(level_size) = self.settings[3] else {
             panic!(
                 "OptionsMenu.settings[3] should be a LevelSize; got {:?}",
                 self.settings[3]
@@ -283,92 +282,6 @@ impl Widget for &OptionsMenu {
                 gutter = usize::from(OptionsMenu::LABEL_VALUE_GUTTER),
             );
             Span::styled(s, style).render(row, buf);
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Adjustable {
-    Bool(bool),
-    Fruits(usize),
-    LevelSize(LevelSize),
-}
-
-impl Adjustable {
-    fn increase(&mut self) {
-        match self {
-            Adjustable::Bool(ref mut b) => *b = true,
-            Adjustable::Fruits(ref mut fr) => {
-                let new_fruits = fr.saturating_add(1);
-                if new_fruits <= consts::MAX_FRUITS {
-                    *fr = new_fruits;
-                }
-            }
-            Adjustable::LevelSize(ref mut size) => {
-                if let Some(new_size) = size.increase() {
-                    *size = new_size;
-                }
-            }
-        }
-    }
-
-    fn decrease(&mut self) {
-        match self {
-            Adjustable::Bool(ref mut b) => *b = false,
-            Adjustable::Fruits(ref mut fr) => {
-                let new_fruits = fr.saturating_sub(1);
-                if new_fruits > 0 {
-                    *fr = new_fruits;
-                }
-            }
-            Adjustable::LevelSize(ref mut size) => {
-                if let Some(new_size) = size.decrease() {
-                    *size = new_size;
-                }
-            }
-        }
-    }
-
-    fn toggle(&mut self) {
-        if let Adjustable::Bool(ref mut b) = self {
-            *b = !*b;
-        }
-    }
-}
-
-impl fmt::Display for Adjustable {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Adjustable::Bool(false) => write!(f, "   [ ]    "),
-            Adjustable::Bool(true) => write!(f, "   [✓]    "),
-            Adjustable::Fruits(fr) => {
-                write!(
-                    f,
-                    "{left} {fr:^6} {right}",
-                    left = if fr == 1 { '◁' } else { '◀' },
-                    right = if fr == consts::MAX_FRUITS {
-                        '▷'
-                    } else {
-                        '▶'
-                    }
-                )
-            }
-            Adjustable::LevelSize(sz) => {
-                write!(
-                    f,
-                    "{left} {sz:6} {right}",
-                    left = if sz == LevelSize::MINIMUM {
-                        '◁'
-                    } else {
-                        '◀'
-                    },
-                    right = if sz == LevelSize::MAXIMUM {
-                        '▷'
-                    } else {
-                        '▶'
-                    }
-                )
-            }
         }
     }
 }
@@ -617,6 +530,7 @@ mod tests {
 
     mod options_menu {
         use super::*;
+        use crate::options::{FruitQty, LevelSize};
 
         #[test]
         fn label_width() {
@@ -640,7 +554,7 @@ mod tests {
             let opts = Options {
                 wraparound: true,
                 obstacles: true,
-                fruits: 4,
+                fruits: FruitQty::new(4).unwrap(),
                 level_size: LevelSize::Small,
             };
             let optmenu = OptionsMenu::new(opts);

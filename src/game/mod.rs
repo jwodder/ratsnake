@@ -57,7 +57,7 @@ impl<R: Rng> Game<R> {
             dead: false,
             map,
         };
-        for _ in 0..options.fruits {
+        for _ in 0..options.fruits.get() {
             game.place_fruit();
         }
         game
