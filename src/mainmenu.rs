@@ -81,7 +81,7 @@ impl MainMenu {
     }
 
     fn play(&self) -> Game {
-        Game::new(self.options.to_options(), rand::rng())
+        Game::new(self.options.to_options())
     }
 
     fn select(&mut self, selection: Selection) {
