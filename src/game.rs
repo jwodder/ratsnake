@@ -36,8 +36,14 @@ pub(crate) struct Game<R = rand::rngs::ThreadRng> {
     wraparound: bool,
 }
 
+impl Game<rand::rngs::ThreadRng> {
+    pub(crate) fn new(options: Options) -> Self {
+        Game::new_with_rng(options, rand::rng())
+    }
+}
+
 impl<R: Rng> Game<R> {
-    pub(crate) fn new(options: Options, mut rng: R) -> Game<R> {
+    pub(crate) fn new_with_rng(options: Options, mut rng: R) -> Game<R> {
         let level_size = options.level_size.as_size();
         let snake_head = Position::new(level_size.width / 2, level_size.height / 2);
         let obstacles = if options.obstacles {
@@ -360,7 +366,7 @@ mod tests {
 
         #[test]
         fn new_game() {
-            let game = Game::new(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
+            let game = Game::new_with_rng(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
             let area = Rect::new(0, 0, 80, 24);
             let mut buffer = Buffer::empty(area);
             game.render(area, &mut buffer);
@@ -398,7 +404,7 @@ mod tests {
 
         #[test]
         fn new_wraparound_game() {
-            let game = Game::new(
+            let game = Game::new_with_rng(
                 Options {
                     wraparound: true,
                     ..Options::default()
@@ -442,7 +448,8 @@ mod tests {
 
         #[test]
         fn self_collision() {
-            let mut game = Game::new(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
+            let mut game =
+                Game::new_with_rng(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
             game.score = 3;
             game.snake_head = Position::new(30, 6);
             game.snake_body = VecDeque::from([
@@ -510,7 +517,7 @@ mod tests {
 
         #[test]
         fn new_medium_game() {
-            let game = Game::new(
+            let game = Game::new_with_rng(
                 Options {
                     level_size: LevelSize::Medium,
                     ..Options::default()
