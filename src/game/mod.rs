@@ -28,7 +28,7 @@ pub(crate) struct Game<R = rand::rngs::ThreadRng> {
     score: u32,
     snake: Snake,
     fruits: HashSet<Position>,
-    dead: bool,
+    state: GameState,
     map: LevelMap,
 }
 
@@ -53,7 +53,7 @@ impl<R: Rng> Game<R> {
             score: 0,
             snake,
             fruits: HashSet::new(),
-            dead: false,
+            state: GameState::Running,
             map,
         };
         for _ in 0..options.fruits.get() {
@@ -63,17 +63,15 @@ impl<R: Rng> Game<R> {
     }
 
     pub(crate) fn process_input(&mut self) -> std::io::Result<Option<AppState>> {
-        if self.dead {
-            if let Some(ev) = read()?.as_key_press_event() {
-                if matches!(
-                    Command::from_key_event(ev),
-                    Some(Command::Quit | Command::Enter)
-                ) {
-                    return Ok(Some(AppState::Quit));
-                }
-            }
-        } else {
+        if self.running() {
             self.tick()?;
+        } else if let Some(ev) = read()?.as_key_press_event() {
+            if matches!(
+                Command::from_key_event(ev),
+                Some(Command::Quit | Command::Enter)
+            ) {
+                return Ok(Some(AppState::Quit));
+            }
         }
         Ok(None)
     }
@@ -96,11 +94,11 @@ impl<R: Rng> Game<R> {
     }
 
     fn advance(&mut self) {
-        if self.dead {
+        if !self.running() {
             return;
         }
         if !self.snake.advance(self.map.bounds()) {
-            self.dead = true;
+            self.state = GameState::Dead;
             return;
         }
         if self.fruits.remove(&self.snake.head()) {
@@ -110,7 +108,10 @@ impl<R: Rng> Game<R> {
         } else if self.snake.body().contains(&self.snake.head())
             || self.map.obstacles().contains(&self.snake.head())
         {
-            self.dead = true;
+            self.state = GameState::Dead;
+        }
+        if self.fruits.is_empty() {
+            self.state = GameState::Exhausted;
         }
     }
 
@@ -143,6 +144,10 @@ impl<R> Game<R> {
             _ => (),
         }
         None
+    }
+
+    fn running(&self) -> bool {
+        self.state == GameState::Running
     }
 }
 
@@ -187,7 +192,7 @@ impl<R> Widget for &Game<R> {
         }
         // Draw the head last so that, if it's a collision, we overwrite
         // whatever it's colliding with
-        if self.dead {
+        if self.state == GameState::Dead {
             level.draw_cell(
                 self.snake.head(),
                 consts::COLLISION_SYMBOL,
@@ -201,9 +206,16 @@ impl<R> Widget for &Game<R> {
             );
         }
 
-        if self.dead {
-            Span::from(" Oh dear, you are dead!").render(msg1_area, buf);
-            Span::from(" Press ENTER to exit.").render(msg2_area, buf);
+        match self.state {
+            GameState::Running => (),
+            GameState::Dead => {
+                Span::from(" Oh dear, you are dead!").render(msg1_area, buf);
+                Span::from(" Press ENTER to exit.").render(msg2_area, buf);
+            }
+            GameState::Exhausted => {
+                Span::from(" You have eaten all you can eat!").render(msg1_area, buf);
+                Span::from(" Press ENTER to exit.").render(msg2_area, buf);
+            }
         }
     }
 }
@@ -266,6 +278,15 @@ impl Widget for DottedBorder {
             canvas.draw_char(Position::new(max_x, y), '⋮');
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum GameState {
+    Running,
+    Dead,
+    /// The snake has filled the board and there are no more spaces to place
+    /// fruits in.
+    Exhausted,
 }
 
 #[cfg(test)]
@@ -381,7 +402,7 @@ mod tests {
         ]);
         game.snake.max_len = 12;
         game.snake.direction = Direction::North;
-        game.dead = true;
+        game.state = GameState::Dead;
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
         game.render(area, &mut buffer);
