@@ -459,6 +459,38 @@ mod tests {
         false,
         Some(Position::new(1, 7))
     )]
+    #[case(Direction::North, Position::new(2, 0), Size::new(10, 15), false, None)]
+    #[case(
+        Direction::North,
+        Position::new(2, 0),
+        Size::new(10, 15),
+        true,
+        Some(Position::new(2, 14))
+    )]
+    #[case(Direction::South, Position::new(2, 14), Size::new(10, 15), false, None)]
+    #[case(
+        Direction::South,
+        Position::new(2, 14),
+        Size::new(10, 15),
+        true,
+        Some(Position::new(2, 0))
+    )]
+    #[case(Direction::East, Position::new(9, 7), Size::new(10, 15), false, None)]
+    #[case(
+        Direction::East,
+        Position::new(9, 7),
+        Size::new(10, 15),
+        true,
+        Some(Position::new(0, 7))
+    )]
+    #[case(Direction::West, Position::new(0, 7), Size::new(10, 15), false, None)]
+    #[case(
+        Direction::West,
+        Position::new(0, 7),
+        Size::new(10, 15),
+        true,
+        Some(Position::new(9, 7))
+    )]
     fn test_direction_advance(
         #[case] d: Direction,
         #[case] pos: Position,
