@@ -30,7 +30,7 @@ pub(crate) struct Game<R = rand::rngs::ThreadRng> {
     snake_len: usize,
     direction: Direction,
     fruits: HashSet<Position>,
-    collision: Option<Position>,
+    dead: bool,
     level_size: Size,
     obstacles: HashSet<Position>,
     wraparound: bool,
@@ -71,7 +71,7 @@ impl<R: Rng> Game<R> {
             snake_len: consts::INITIAL_SNAKE_LENGTH,
             direction: Direction::North,
             fruits: HashSet::new(),
-            collision: None,
+            dead: false,
             level_size,
             obstacles,
             wraparound: options.wraparound,
@@ -83,7 +83,7 @@ impl<R: Rng> Game<R> {
     }
 
     pub(crate) fn process_input(&mut self) -> io::Result<Option<AppState>> {
-        if self.dead() {
+        if self.dead {
             if let Some(ev) = read()?.as_key_press_event() {
                 if matches!(
                     Command::from_key_event(ev),
@@ -116,7 +116,7 @@ impl<R: Rng> Game<R> {
     }
 
     fn advance(&mut self) {
-        if self.dead() {
+        if self.dead {
             return;
         }
         if let Some(pos) = self
@@ -126,7 +126,7 @@ impl<R: Rng> Game<R> {
             self.snake_body.push_back(self.snake_head);
             self.snake_head = pos;
         } else {
-            self.collision = Some(self.snake_head);
+            self.dead = true;
             return;
         }
         while self.snake_body.len() > self.snake_len {
@@ -139,7 +139,7 @@ impl<R: Rng> Game<R> {
         } else if self.snake_body.contains(&self.snake_head)
             || self.obstacles.contains(&self.snake_head)
         {
-            self.collision = Some(self.snake_head);
+            self.dead = true;
         }
     }
 
@@ -171,10 +171,6 @@ impl<R> Game<R> {
             _ => (),
         }
         None
-    }
-
-    fn dead(&self) -> bool {
-        self.collision.is_some()
     }
 }
 
@@ -208,11 +204,6 @@ impl<R> Widget for &Game<R> {
             area: level_area,
             buf,
         };
-        level.draw_cell(
-            self.snake_head,
-            consts::SNAKE_HEAD_SYMBOL,
-            consts::SNAKE_STYLE,
-        );
         for &p in &self.snake_body {
             level.draw_cell(p, consts::SNAKE_BODY_SYMBOL, consts::SNAKE_STYLE);
         }
@@ -222,11 +213,23 @@ impl<R> Widget for &Game<R> {
         for &pos in &self.obstacles {
             level.draw_cell(pos, consts::OBSTACLE_SYMBOL, consts::OBSTACLE_STYLE);
         }
-        if let Some(pos) = self.collision {
-            level.draw_cell(pos, consts::COLLISION_SYMBOL, consts::COLLISION_STYLE);
+        // Draw the head last so that, if it's a collision, we overwrite
+        // whatever it's colliding with
+        if self.dead {
+            level.draw_cell(
+                self.snake_head,
+                consts::COLLISION_SYMBOL,
+                consts::COLLISION_STYLE,
+            );
+        } else {
+            level.draw_cell(
+                self.snake_head,
+                consts::SNAKE_HEAD_SYMBOL,
+                consts::SNAKE_STYLE,
+            );
         }
 
-        if self.dead() {
+        if self.dead {
             Span::from(" Oh dear, you are dead!").render(msg1_area, buf);
             Span::from(" Press ENTER to exit.").render(msg2_area, buf);
         }
@@ -261,7 +264,7 @@ impl Canvas<'_> {
         };
         if let Some(cell) = self.buf.cell_mut((x, y)) {
             cell.set_char(symbol);
-            cell.set_style(style);
+            cell.set_style(Style::reset().patch(style));
         }
     }
 }
@@ -458,7 +461,7 @@ mod tests {
             ]);
             game.snake_len = 12;
             game.direction = Direction::North;
-            game.collision = Some(Position::new(30, 6));
+            game.dead = true;
             let area = Rect::new(0, 0, 80, 24);
             let mut buffer = Buffer::empty(area);
             game.render(area, &mut buffer);
