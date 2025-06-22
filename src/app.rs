@@ -1,5 +1,5 @@
 use crate::game::Game;
-use crate::mainmenu::MainMenu;
+use crate::menu::MainMenu;
 use crate::options::Options;
 use ratatui::{backend::Backend, Terminal};
 use std::io;
