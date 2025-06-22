@@ -90,7 +90,10 @@ impl StartupScreen {
     }
 }
 
-static INSTRUCTIONS: &[&str] = &[
+const INSTRUCTIONS_WIDTH: u16 = 20;
+const INSTRUCTIONS_HEIGHT: u16 = 6;
+
+const INSTRUCTIONS: [&str; INSTRUCTIONS_HEIGHT as usize] = [
     "Move the snake with:",
     "       ← ↓ ↑ →",
     "   or: h j k l",
@@ -99,27 +102,24 @@ static INSTRUCTIONS: &[&str] = &[
     "don't hit yourself!",
 ];
 
-const INSTRUCTIONS_WIDTH: u16 = 20;
-const INSTRUCTIONS_HEIGHT: u16 = 6;
-
 impl Widget for &StartupScreen {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let display = get_display_area(area);
-        let [mut logo_area] = Layout::horizontal([Logo::WIDTH])
+        let [logo_area, instructions_area, ng_area, options_area, quit_area] =
+            Layout::vertical([Logo::HEIGHT, INSTRUCTIONS_HEIGHT, 1, OptionsMenu::HEIGHT, 1])
+                .flex(Flex::Start)
+                .spacing(1)
+                .areas(display);
+
+        let [logo_area] = Layout::horizontal([Logo::WIDTH])
             .flex(Flex::Center)
-            .areas(display);
-        logo_area.height = Logo::HEIGHT;
+            .areas(logo_area);
         Logo.render(logo_area, buf);
-        let mut y = logo_area.bottom() + 1;
+
         let [instructions_area] = Layout::horizontal([INSTRUCTIONS_WIDTH])
             .flex(Flex::Center)
-            .areas(Rect {
-                y,
-                height: INSTRUCTIONS_HEIGHT,
-                ..display
-            });
-        Text::from_iter(INSTRUCTIONS.iter().copied()).render(instructions_area, buf);
-        y += INSTRUCTIONS_HEIGHT + 1;
+            .areas(instructions_area);
+        Text::from_iter(INSTRUCTIONS).render(instructions_area, buf);
 
         let ngstyle = if self.selection == Selection::NewGameButton {
             consts::MENU_SELECTION_STYLE
@@ -128,24 +128,13 @@ impl Widget for &StartupScreen {
         };
         Line::from(Span::styled("[New Game (n)]", ngstyle))
             .centered()
-            .render(
-                Rect {
-                    y,
-                    height: 1,
-                    ..display
-                },
-                buf,
-            );
-        y += 2;
+            .render(ng_area, buf);
+
         let [options_area] = Layout::horizontal([OptionsMenu::WIDTH])
             .flex(Flex::Center)
-            .areas(Rect {
-                y,
-                height: OptionsMenu::HEIGHT,
-                ..display
-            });
+            .areas(options_area);
         (&self.options).render(options_area, buf);
-        y += OptionsMenu::HEIGHT + 1;
+
         let qstyle = if self.selection == Selection::QuitButton {
             consts::MENU_SELECTION_STYLE
         } else {
@@ -153,14 +142,7 @@ impl Widget for &StartupScreen {
         };
         Line::from(Span::styled("[Quit (q)]", qstyle))
             .centered()
-            .render(
-                Rect {
-                    y,
-                    height: 1,
-                    ..display
-                },
-                buf,
-            );
+            .render(quit_area, buf);
     }
 }
 
