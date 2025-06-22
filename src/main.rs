@@ -7,22 +7,41 @@ mod menu;
 mod options;
 mod util;
 use crate::app::App;
-use std::io::{self, ErrorKind};
+use std::io::{ErrorKind, Write};
 use std::process::ExitCode;
 
-fn main() -> ExitCode {
-    let terminal = ratatui::init();
-    let r = App::new().run(terminal);
-    ratatui::restore();
-    io_exit(r)
+macro_rules! error {
+    ($($arg:tt)*) => {
+        {
+            let mut stderr = std::io::stderr().lock();
+            if let Err(err) = writeln!(stderr, "ratsnake: {}", format_args!($($arg)*)) {
+                if err.kind() == ErrorKind::BrokenPipe {
+                    return ExitCode::SUCCESS;
+                } else {
+                    return ExitCode::from(2);
+                }
+            }
+        }
+    }
 }
 
-fn io_exit(r: io::Result<()>) -> ExitCode {
+fn main() -> ExitCode {
+    let terminal = match ratatui::try_init() {
+        Ok(term) => term,
+        Err(e) => {
+            error!("failed to set up terminal: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    let r = App::new().run(terminal);
+    if let Err(e) = ratatui::try_restore() {
+        error!("failed to clean up terminal: {e}");
+    }
     match r {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) if e.kind() == ErrorKind::BrokenPipe => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("{e}");
+            error!("{e}");
             ExitCode::from(2)
         }
     }
