@@ -13,7 +13,7 @@ pub(crate) enum Command {
     End,
     Next,
     Prev,
-    N,
+    P,
     Q,
 }
 
@@ -31,7 +31,7 @@ impl Command {
             (_, KeyCode::End) => Some(Command::End),
             (_, KeyCode::Tab) => Some(Command::Next),
             (_, KeyCode::BackTab) => Some(Command::Prev),
-            (KeyModifiers::NONE, KeyCode::Char('n')) => Some(Command::N),
+            (KeyModifiers::NONE, KeyCode::Char('p')) => Some(Command::P),
             (KeyModifiers::NONE, KeyCode::Char('q')) => Some(Command::Q),
             _ => None,
         }

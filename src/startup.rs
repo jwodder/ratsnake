@@ -48,13 +48,13 @@ impl StartupScreen {
             Command::from_key_event(event.as_key_press_event()?)?,
         ) {
             (_, Command::Quit) => return Some(AppState::Quit),
-            (_, Command::Home) => self.select(Selection::NewGameButton),
+            (_, Command::Home) => self.select(Selection::PlayButton),
             (_, Command::End) => self.select(Selection::QuitButton),
-            (Selection::NewGameButton, Command::Enter) | (_, Command::N) => {
-                return Some(AppState::Game(self.new_game()))
+            (Selection::PlayButton, Command::Enter) | (_, Command::P) => {
+                return Some(AppState::Game(self.play()))
             }
-            (Selection::NewGameButton, Command::Prev) => self.select(Selection::QuitButton),
-            (Selection::NewGameButton, Command::Down | Command::Next) => {
+            (Selection::PlayButton, Command::Prev) => self.select(Selection::QuitButton),
+            (Selection::PlayButton, Command::Down | Command::Next) => {
                 self.select(Selection::Options);
             }
             (Selection::Options, Command::Up | Command::Prev) => {
@@ -73,14 +73,14 @@ impl StartupScreen {
             (Selection::QuitButton, Command::Enter) | (_, Command::Q) => {
                 return Some(AppState::Quit)
             }
-            (Selection::QuitButton, Command::Next) => self.select(Selection::NewGameButton),
+            (Selection::QuitButton, Command::Next) => self.select(Selection::PlayButton),
             (Selection::QuitButton, Command::Up | Command::Prev) => self.select(Selection::Options),
             _ => (),
         }
         None
     }
 
-    fn new_game(&self) -> Game {
+    fn play(&self) -> Game {
         Game::new(self.options.to_options(), rand::rng())
     }
 
@@ -105,7 +105,7 @@ const INSTRUCTIONS: [&str; INSTRUCTIONS_HEIGHT as usize] = [
 impl Widget for &StartupScreen {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let display = get_display_area(area);
-        let [logo_area, instructions_area, ng_area, options_area, quit_area] =
+        let [logo_area, instructions_area, play_area, options_area, quit_area] =
             Layout::vertical([Logo::HEIGHT, INSTRUCTIONS_HEIGHT, 1, OptionsMenu::HEIGHT, 1])
                 .flex(Flex::Start)
                 .spacing(1)
@@ -121,14 +121,14 @@ impl Widget for &StartupScreen {
             .areas(instructions_area);
         Text::from_iter(INSTRUCTIONS).render(instructions_area, buf);
 
-        let ngstyle = if self.selection == Selection::NewGameButton {
+        let play_style = if self.selection == Selection::PlayButton {
             consts::MENU_SELECTION_STYLE
         } else {
             Style::new()
         };
-        Line::from(Span::styled("[New Game (n)]", ngstyle))
+        Line::from(Span::styled("[Play (p)]", play_style))
             .centered()
-            .render(ng_area, buf);
+            .render(play_area, buf);
 
         let [options_area] = Layout::horizontal([OptionsMenu::WIDTH])
             .flex(Flex::Center)
@@ -149,7 +149,7 @@ impl Widget for &StartupScreen {
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 enum Selection {
     #[default]
-    NewGameButton,
+    PlayButton,
     Options,
     QuitButton,
 }
@@ -228,7 +228,7 @@ impl OptionsMenu {
             self.selection = sel;
             None
         } else {
-            Some(Selection::NewGameButton)
+            Some(Selection::PlayButton)
         }
     }
 
@@ -401,7 +401,7 @@ mod tests {
                 "                              Eat the fruit, but                                ",
                 "                              don't hit yourself!                               ",
                 "                                                                                ",
-                "                                 [New Game (n)]                                 ",
+                "                                   [Play (p)]                                   ",
                 "                                                                                ",
                 "                          ┌ Options: ────────────────┐                          ",
                 "                          │   Wraparound     [ ]     │                          ",
@@ -415,7 +415,7 @@ mod tests {
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
-            expected.set_style(Rect::new(33, 13, 14, 1), consts::MENU_SELECTION_STYLE);
+            expected.set_style(Rect::new(35, 13, 10, 1), consts::MENU_SELECTION_STYLE);
             assert_eq!(buffer, expected);
         }
 
@@ -442,7 +442,7 @@ mod tests {
                 "                              Eat the fruit, but                                ",
                 "                              don't hit yourself!                               ",
                 "                                                                                ",
-                "                                 [New Game (n)]                                 ",
+                "                                   [Play (p)]                                   ",
                 "                                                                                ",
                 "                          ┌ Options: ────────────────┐                          ",
                 "                          │ » Wraparound     [ ]     │                          ",
@@ -478,7 +478,7 @@ mod tests {
                 "                              Eat the fruit, but                                ",
                 "                              don't hit yourself!                               ",
                 "                                                                                ",
-                "                                 [New Game (n)]                                 ",
+                "                                   [Play (p)]                                   ",
                 "                                                                                ",
                 "                          ┌ Options: ────────────────┐                          ",
                 "                          │ » Wraparound     [✓]     │                          ",
@@ -523,7 +523,7 @@ mod tests {
                 "                              Eat the fruit, but                                ",
                 "                              don't hit yourself!                               ",
                 "                                                                                ",
-                "                                 [New Game (n)]                                 ",
+                "                                   [Play (p)]                                   ",
                 "                                                                                ",
                 "                          ┌ Options: ────────────────┐                          ",
                 "                          │   Wraparound     [✓]     │                          ",
@@ -559,7 +559,7 @@ mod tests {
                 "                              Eat the fruit, but                                ",
                 "                              don't hit yourself!                               ",
                 "                                                                                ",
-                "                                 [New Game (n)]                                 ",
+                "                                   [Play (p)]                                   ",
                 "                                                                                ",
                 "                          ┌ Options: ────────────────┐                          ",
                 "                          │   Wraparound     [✓]     │                          ",
@@ -595,7 +595,7 @@ mod tests {
                 "                              Eat the fruit, but                                ",
                 "                              don't hit yourself!                               ",
                 "                                                                                ",
-                "                                 [New Game (n)]                                 ",
+                "                                   [Play (p)]                                   ",
                 "                                                                                ",
                 "                          ┌ Options: ────────────────┐                          ",
                 "                          │   Wraparound     [✓]     │                          ",
