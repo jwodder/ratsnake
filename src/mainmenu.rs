@@ -417,7 +417,7 @@ mod tests {
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(35, 13, 10, 1), consts::MENU_SELECTION_STYLE);
-            assert_eq!(buffer, expected);
+            pretty_assertions::assert_eq!(buffer, expected);
         }
 
         #[test]
@@ -458,7 +458,7 @@ mod tests {
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(28, 16, 24, 1), consts::MENU_SELECTION_STYLE);
-            assert_eq!(buffer, expected);
+            pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
                 .handle_event(Event::Key(KeyCode::Char(' ').into()))
@@ -494,7 +494,7 @@ mod tests {
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(28, 16, 24, 1), consts::MENU_SELECTION_STYLE);
-            assert_eq!(buffer, expected);
+            pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
                 .handle_event(Event::Key(KeyCode::Down.into()))
@@ -539,7 +539,7 @@ mod tests {
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(28, 19, 24, 1), consts::MENU_SELECTION_STYLE);
-            assert_eq!(buffer, expected);
+            pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
                 .handle_event(Event::Key(KeyCode::Left.into()))
@@ -575,7 +575,7 @@ mod tests {
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(28, 19, 24, 1), consts::MENU_SELECTION_STYLE);
-            assert_eq!(buffer, expected);
+            pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
                 .handle_event(Event::Key(KeyCode::Left.into()))
@@ -611,7 +611,7 @@ mod tests {
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(28, 19, 24, 1), consts::MENU_SELECTION_STYLE);
-            assert_eq!(buffer, expected);
+            pretty_assertions::assert_eq!(buffer, expected);
         }
     }
 

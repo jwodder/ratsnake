@@ -39,6 +39,8 @@ pub(crate) const COLLISION_STYLE: Style = Style::new()
     .fg(Color::LightRed)
     .add_modifier(Modifier::REVERSED);
 
+pub(crate) const SCORE_BAR_STYLE: Style = Style::new().add_modifier(Modifier::REVERSED);
+
 pub(crate) const MENU_SELECTION_STYLE: Style = Style::new().add_modifier(Modifier::UNDERLINED);
 
 pub(crate) const OBSTACLE_PROBABILITY: f64 = 0.03;

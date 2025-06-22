@@ -71,7 +71,7 @@ mod tests {
         ]);
         expected.set_style(Rect::new(3, 2, 15, 8), consts::FRUIT_STYLE);
         expected.set_style(Rect::new(18, 2, 32, 8), consts::SNAKE_STYLE);
-        assert_eq!(buffer, expected);
+        pretty_assertions::assert_eq!(buffer, expected);
     }
 
     #[test]
@@ -92,7 +92,7 @@ mod tests {
         ]);
         expected.set_style(Rect::new(3, 2, 15, 3), consts::FRUIT_STYLE);
         expected.set_style(Rect::new(18, 2, 25, 3), consts::SNAKE_STYLE);
-        assert_eq!(buffer, expected);
+        pretty_assertions::assert_eq!(buffer, expected);
     }
 
     #[test]

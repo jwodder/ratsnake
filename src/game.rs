@@ -2,7 +2,7 @@ use crate::app::AppState;
 use crate::command::Command;
 use crate::consts;
 use crate::options::Options;
-use crate::util::{get_display_area, RectExt, Side};
+use crate::util::get_display_area;
 use crossterm::event::{poll, read, Event};
 use rand::{
     distr::{Bernoulli, Distribution},
@@ -11,9 +11,9 @@ use rand::{
 };
 use ratatui::{
     buffer::Buffer,
-    layout::{Margin, Position, Rect, Size},
+    layout::{Constraint, Flex, Layout, Margin, Position, Rect, Size},
     style::Style,
-    text::Span,
+    text::{Line, Span},
     widgets::{Block, Widget},
     Frame,
 };
@@ -180,18 +180,29 @@ impl<R> Game<R> {
 
 impl<R> Widget for &Game<R> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let display = get_display_area(area).shave(Side::Left).shave(Side::Right);
-        Span::from(format!("Score: {}", self.score)).render(
-            Rect {
-                height: 1,
-                ..display
-            },
-            buf,
-        );
-        let block_area = display
-            .shave(Side::Top)
-            .shave(Side::Bottom)
-            .shave(Side::Bottom);
+        let display = get_display_area(area);
+        let [score_area, block_area, msg1_area, msg2_area] = Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Fill(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
+        ])
+        .areas(display);
+        Line::styled(format!(" Score: {}", self.score), consts::SCORE_BAR_STYLE)
+            .render(score_area, buf);
+
+        let [block_area] = Layout::horizontal([self.level_size.width.saturating_add(2)])
+            .flex(Flex::Center)
+            .areas(block_area);
+        let [block_area] = Layout::vertical([self.level_size.height.saturating_add(2)])
+            .flex(Flex::Center)
+            .areas(block_area);
+        if self.wraparound {
+            DottedBorder.render(block_area, buf);
+        } else {
+            Block::bordered().render(block_area, buf);
+        }
+
         let level_area = block_area.inner(Margin::new(1, 1));
         let mut level = Canvas {
             area: level_area,
@@ -214,31 +225,10 @@ impl<R> Widget for &Game<R> {
         if let Some(pos) = self.collision {
             level.draw_cell(pos, consts::COLLISION_SYMBOL, consts::COLLISION_STYLE);
         }
-        if self.wraparound {
-            DottedBorder.render(block_area, buf);
-        } else {
-            Block::bordered().render(block_area, buf);
-        }
+
         if self.dead() {
-            let y = block_area.bottom();
-            Span::from("Oh dear, you are dead!").render(
-                Rect {
-                    y,
-                    height: 1,
-                    ..display
-                },
-                buf,
-            );
-            if let Some(y) = y.checked_add(1) {
-                Span::from("Press ENTER to exit.").render(
-                    Rect {
-                        y,
-                        height: 1,
-                        ..display
-                    },
-                    buf,
-                );
-            }
+            Span::from(" Oh dear, you are dead!").render(msg1_area, buf);
+            Span::from(" Press ENTER to exit.").render(msg2_area, buf);
         }
     }
 }
@@ -359,6 +349,7 @@ mod tests {
 
     mod render_game {
         use super::*;
+        use crate::options::LevelSize;
         use rand::SeedableRng;
         use rand_chacha::ChaCha12Rng;
 
@@ -396,9 +387,10 @@ mod tests {
                 "",
                 "",
             ]);
+            expected.set_style(Rect::new(0, 0, 80, 1), consts::SCORE_BAR_STYLE);
             expected.set_style(Rect::new(40, 11, 1, 1), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
-            assert_eq!(buffer, expected);
+            pretty_assertions::assert_eq!(buffer, expected);
         }
 
         #[test]
@@ -439,9 +431,10 @@ mod tests {
                 "",
                 "",
             ]);
+            expected.set_style(Rect::new(0, 0, 80, 1), consts::SCORE_BAR_STYLE);
             expected.set_style(Rect::new(40, 11, 1, 1), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
-            assert_eq!(buffer, expected);
+            pretty_assertions::assert_eq!(buffer, expected);
         }
 
         #[test]
@@ -495,6 +488,7 @@ mod tests {
                 " Oh dear, you are dead!",
                 " Press ENTER to exit.",
             ]);
+            expected.set_style(Rect::new(0, 0, 80, 1), consts::SCORE_BAR_STYLE);
             expected.set_style(Rect::new(32, 8, 1, 1), consts::COLLISION_STYLE);
             expected.set_style(Rect::new(33, 8, 1, 1), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(34, 8, 1, 1), consts::SNAKE_STYLE);
@@ -508,7 +502,51 @@ mod tests {
             expected.set_style(Rect::new(32, 10, 1, 1), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(32, 9, 1, 1), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
-            assert_eq!(buffer, expected);
+            pretty_assertions::assert_eq!(buffer, expected);
+        }
+
+        #[test]
+        fn new_medium_game() {
+            let game = Game::new(
+                Options {
+                    level_size: LevelSize::Medium,
+                    ..Options::default()
+                },
+                ChaCha12Rng::seed_from_u64(RNG_SEED),
+            );
+            let area = Rect::new(0, 0, 80, 24);
+            let mut buffer = Buffer::empty(area);
+            game.render(area, &mut buffer);
+            let mut expected = Buffer::with_lines([
+                " Score: 0",
+                "",
+                "",
+                "",
+                "",
+                "             ┌─────────────────────────────────────────────────────┐            ",
+                "             │                                                     │            ",
+                "             │                                                     │            ",
+                "             │                                                     │            ",
+                "             │                                                     │            ",
+                "             │                                                     │            ",
+                "             │                                                     │            ",
+                "             │                          @                          │            ",
+                "             │                                                     │            ",
+                "             │                                                     │            ",
+                "             │                                                     │            ",
+                "             │                                                     │            ",
+                "             │                                                    ●│            ",
+                "             └─────────────────────────────────────────────────────┘            ",
+                "",
+                "",
+                "",
+                "",
+                "",
+            ]);
+            expected.set_style(Rect::new(0, 0, 80, 1), consts::SCORE_BAR_STYLE);
+            expected.set_style(Rect::new(40, 12, 1, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(66, 17, 1, 1), consts::FRUIT_STYLE);
+            pretty_assertions::assert_eq!(buffer, expected);
         }
     }
 
