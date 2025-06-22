@@ -64,30 +64,25 @@ impl<R: Rng> Game<R> {
 
     pub(crate) fn process_input(&mut self) -> std::io::Result<Option<AppState>> {
         if self.running() {
-            self.tick()?;
+            let mut wait = consts::TICK_DURATION;
+            loop {
+                let now = Instant::now();
+                if poll(wait)? {
+                    if let st @ Some(_) = self.handle_event(read()?) {
+                        return Ok(st);
+                    }
+                    wait = wait.saturating_sub(now.elapsed());
+                } else {
+                    self.advance();
+                    break;
+                }
+            }
         } else if let Some(ev) = read()?.as_key_press_event() {
             if matches!(
                 Command::from_key_event(ev),
                 Some(Command::Quit | Command::Enter)
             ) {
                 return Ok(Some(AppState::Quit));
-            }
-        }
-        Ok(None)
-    }
-
-    fn tick(&mut self) -> std::io::Result<Option<AppState>> {
-        let mut wait = consts::TICK_DURATION;
-        loop {
-            let now = Instant::now();
-            if poll(wait)? {
-                if let st @ Some(_) = self.handle_event(read()?) {
-                    return Ok(st);
-                }
-                wait = wait.saturating_sub(now.elapsed());
-            } else {
-                self.advance();
-                break;
             }
         }
         Ok(None)
