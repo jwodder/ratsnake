@@ -3,7 +3,7 @@ mod command;
 mod consts;
 mod game;
 mod logo;
-mod mainmenu;
+mod menu;
 mod options;
 mod util;
 use crate::app::App;

@@ -47,33 +47,35 @@ impl MainMenu {
             Command::from_key_event(event.as_key_press_event()?)?,
         ) {
             (_, Command::Quit) => return Some(AppState::Quit),
-            (_, Command::Home) => self.select(Selection::PlayButton),
-            (_, Command::End) => self.select(Selection::QuitButton),
+            (_, Command::Home) => self.select(Selection::PlayButton, None),
+            (_, Command::End) => self.select(Selection::QuitButton, None),
             (Selection::PlayButton, Command::Enter) | (_, Command::P) => {
                 return Some(AppState::Game(self.play()))
             }
-            (Selection::PlayButton, Command::Prev) => self.select(Selection::QuitButton),
+            (Selection::PlayButton, Command::Prev) => self.select(Selection::QuitButton, None),
             (Selection::PlayButton, Command::Down | Command::Next) => {
-                self.select(Selection::Options);
+                self.select(Selection::Options, Some(true));
             }
             (Selection::Options, Command::Up | Command::Prev) => {
                 if let Some(sel) = self.options.move_up() {
-                    self.select(sel);
+                    self.select(sel, None);
                 }
             }
             (Selection::Options, Command::Down | Command::Next) => {
                 if let Some(sel) = self.options.move_down() {
-                    self.select(sel);
+                    self.select(sel, None);
                 }
             }
             (Selection::Options, Command::Left) => self.options.move_left(),
             (Selection::Options, Command::Right) => self.options.move_right(),
             (Selection::Options, Command::Space | Command::Enter) => self.options.toggle(),
             (Selection::QuitButton, Command::Enter) | (_, Command::Q) => {
-                return Some(AppState::Quit)
+                return Some(AppState::Quit);
             }
-            (Selection::QuitButton, Command::Next) => self.select(Selection::PlayButton),
-            (Selection::QuitButton, Command::Up | Command::Prev) => self.select(Selection::Options),
+            (Selection::QuitButton, Command::Next) => self.select(Selection::PlayButton, None),
+            (Selection::QuitButton, Command::Up | Command::Prev) => {
+                self.select(Selection::Options, Some(false));
+            }
             _ => (),
         }
         None
@@ -83,9 +85,19 @@ impl MainMenu {
         Game::new(self.options.to_options())
     }
 
-    fn select(&mut self, selection: Selection) {
+    fn select(&mut self, selection: Selection, first_option: Option<bool>) {
         self.selection = selection;
-        self.options.active = selection == Selection::Options;
+        if selection == Selection::Options {
+            if let Some(first) = first_option {
+                self.options.selection = if first {
+                    Some(0)
+                } else {
+                    Some(OptionsMenu::OPTION_QTY - 1)
+                };
+            } else {
+                self.options.selection = None;
+            }
+        }
     }
 }
 
@@ -155,12 +167,10 @@ enum Selection {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct OptionsMenu {
-    /// Is the currently-selected main menu screen item an element of this
-    /// menu?
-    active: bool,
-    /// Index of the currently-selected item in the menu; if the menu isn't
-    /// active, this is the index of the most recently-selected item.
-    selection: usize,
+    /// If the currently-selected main menu item is an element of this menu,
+    /// then `selection` is `Some(i)`, where `i` is the index of the selected
+    /// item within the `OptionsMenu`.
+    selection: Option<usize>,
     settings: [OptValue; Self::OPTION_QTY],
 }
 
@@ -184,8 +194,7 @@ impl OptionsMenu {
             OptValue::LevelSize(options.level_size),
         ];
         OptionsMenu {
-            active: false,
-            selection: 0,
+            selection: None,
             settings,
         }
     }
@@ -224,34 +233,42 @@ impl OptionsMenu {
     }
 
     fn move_up(&mut self) -> Option<Selection> {
-        if let Some(sel) = self.selection.checked_sub(1) {
-            self.selection = sel;
+        if let Some(sel) = self.selection?.checked_sub(1) {
+            self.selection = Some(sel);
             None
         } else {
+            self.selection = None;
             Some(Selection::PlayButton)
         }
     }
 
     fn move_down(&mut self) -> Option<Selection> {
-        let sel = self.selection + 1;
-        if sel < self.settings.len() {
-            self.selection = sel;
+        let sel = self.selection? + 1;
+        if sel < Self::OPTION_QTY {
+            self.selection = Some(sel);
             None
         } else {
+            self.selection = None;
             Some(Selection::QuitButton)
         }
     }
 
     fn move_left(&mut self) {
-        self.settings[self.selection].decrease();
+        if let Some(sel) = self.selection {
+            self.settings[sel].decrease();
+        }
     }
 
     fn move_right(&mut self) {
-        self.settings[self.selection].increase();
+        if let Some(sel) = self.selection {
+            self.settings[sel].increase();
+        }
     }
 
     fn toggle(&mut self) {
-        self.settings[self.selection].toggle();
+        if let Some(sel) = self.selection {
+            self.settings[sel].toggle();
+        }
     }
 }
 
@@ -267,7 +284,7 @@ impl Widget for &OptionsMenu {
                 .zip(menu_area.rows())
                 .enumerate()
         {
-            let selected = self.active && i == self.selection;
+            let selected = Some(i) == self.selection;
             let style = if selected {
                 consts::MENU_SELECTION_STYLE
             } else {
@@ -525,6 +542,24 @@ mod tests {
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(28, 19, 24, 1), consts::MENU_SELECTION_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
+        }
+
+        /// Test that tabbing to the end of the options menu and then tabbing
+        /// again until you loop back around to the options menu puts you at
+        /// the start of the options.
+        #[test]
+        fn tab_wraparound() {
+            let mut menu = MainMenu::new(Options::default());
+            assert_eq!(menu.options.selection, None);
+            for _ in 0..OptionsMenu::OPTION_QTY {
+                assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
+            }
+            assert_eq!(menu.options.selection, Some(OptionsMenu::OPTION_QTY - 1));
+            assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
+            assert_eq!(menu.options.selection, None);
+            assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
+            assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
+            assert_eq!(menu.options.selection, Some(0));
         }
     }
 
