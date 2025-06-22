@@ -2,7 +2,6 @@ mod app;
 mod command;
 mod consts;
 mod game;
-mod logo;
 mod menu;
 mod options;
 mod util;
