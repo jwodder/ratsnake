@@ -14,31 +14,31 @@ impl Logo {
     const SNAKE_WIDTH: u16 = 28;
     pub(crate) const HEIGHT: u16 = 5;
     pub(crate) const WIDTH: u16 = Self::RAT_WIDTH + Self::SNAKE_WIDTH;
+
+    #[rustfmt::skip]
+    const RAT: [&str; Self::HEIGHT as usize] = [
+         " ____       _  ",
+        r"|  _ \ __ _| |_",
+         "| |_) / _` | __",
+         "|  _ < (_| | |_",
+        r"|_| \_\__,_|\__",
+    ];
+
+    #[rustfmt::skip]
+    const SNAKE: [&str; Self::HEIGHT as usize] = [
+         " ____              _        ",
+         "/ ___| _ __   __ _| | _____ ",
+        r"\___ \| '_ \ / _` | |/ / _ \",
+         " ___) | | | | (_| |   <  __/",
+        r"|____/|_| |_|\__,_|_|\_\___|",
+    ];
 }
-
-#[rustfmt::skip]
-static RAT: &[&str] = &[
-     " ____       _  ",
-    r"|  _ \ __ _| |_",
-     "| |_) / _` | __",
-     "|  _ < (_| | |_",
-    r"|_| \_\__,_|\__",
-];
-
-#[rustfmt::skip]
-static SNAKE: &[&str] = &[
-     " ____              _        ",
-     "/ ___| _ __   __ _| | _____ ",
-    r"\___ \| '_ \ / _` | |/ / _ \",
-     " ___) | | | | (_| |   <  __/",
-    r"|____/|_| |_|\__,_|_|\_\___|",
-];
 
 impl Widget for Logo {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let rat_text = Text::from_iter(RAT.iter().copied()).style(consts::FRUIT_STYLE);
+        let rat_text = Text::from_iter(Self::RAT).style(consts::FRUIT_STYLE);
         rat_text.render(area, buf);
-        let snake_text = Text::from_iter(SNAKE.iter().copied()).style(consts::SNAKE_STYLE);
+        let snake_text = Text::from_iter(Self::SNAKE).style(consts::SNAKE_STYLE);
         let snake_area = area
             .offset(Offset {
                 x: Self::RAT_WIDTH.into(),
@@ -97,21 +97,15 @@ mod tests {
 
     #[test]
     fn rat_width() {
-        assert!(RAT
+        assert!(Logo::RAT
             .iter()
             .all(|ln| ln.len() == usize::from(Logo::RAT_WIDTH)));
     }
 
     #[test]
     fn snake_width() {
-        assert!(SNAKE
+        assert!(Logo::SNAKE
             .iter()
             .all(|ln| ln.len() == usize::from(Logo::SNAKE_WIDTH)));
-    }
-
-    #[test]
-    fn height() {
-        assert_eq!(RAT.len(), usize::from(Logo::HEIGHT));
-        assert_eq!(SNAKE.len(), usize::from(Logo::HEIGHT));
     }
 }
