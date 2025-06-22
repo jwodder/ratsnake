@@ -48,35 +48,33 @@ impl StartupScreen {
             Command::from_key_event(event.as_key_press_event()?)?,
         ) {
             (_, Command::Quit) => return Some(AppState::Quit),
+            (_, Command::Home) => self.select(Selection::NewGameButton),
+            (_, Command::End) => self.select(Selection::QuitButton),
             (Selection::NewGameButton, Command::Enter) | (_, Command::N) => {
-                return Some(AppState::Game(self.new_game()));
+                return Some(AppState::Game(self.new_game()))
             }
-            (Selection::NewGameButton, Command::Down) => {
-                self.selection = Selection::Options;
-                self.options.active = true;
+            (Selection::NewGameButton, Command::Prev) => self.select(Selection::QuitButton),
+            (Selection::NewGameButton, Command::Down | Command::Next) => {
+                self.select(Selection::Options);
             }
-            (Selection::Options, Command::Up) => {
-                self.selection = self.options.move_up();
+            (Selection::Options, Command::Up | Command::Prev) => {
+                if let Some(sel) = self.options.move_up() {
+                    self.select(sel);
+                }
             }
-            (Selection::Options, Command::Down) => {
-                self.selection = self.options.move_down();
+            (Selection::Options, Command::Down | Command::Next) => {
+                if let Some(sel) = self.options.move_down() {
+                    self.select(sel);
+                }
             }
-            (Selection::Options, Command::Left) => {
-                self.options.move_left();
-            }
-            (Selection::Options, Command::Right) => {
-                self.options.move_right();
-            }
-            (Selection::Options, Command::Space | Command::Enter) => {
-                self.options.toggle();
-            }
+            (Selection::Options, Command::Left) => self.options.move_left(),
+            (Selection::Options, Command::Right) => self.options.move_right(),
+            (Selection::Options, Command::Space | Command::Enter) => self.options.toggle(),
             (Selection::QuitButton, Command::Enter) | (_, Command::Q) => {
-                return Some(AppState::Quit);
+                return Some(AppState::Quit)
             }
-            (Selection::QuitButton, Command::Up) => {
-                self.selection = Selection::Options;
-                self.options.active = true;
-            }
+            (Selection::QuitButton, Command::Next) => self.select(Selection::NewGameButton),
+            (Selection::QuitButton, Command::Up | Command::Prev) => self.select(Selection::Options),
             _ => (),
         }
         None
@@ -84,6 +82,11 @@ impl StartupScreen {
 
     fn new_game(&self) -> Game {
         Game::new(self.options.to_options(), rand::rng())
+    }
+
+    fn select(&mut self, selection: Selection) {
+        self.selection = selection;
+        self.options.active = selection == Selection::Options;
     }
 }
 
@@ -238,24 +241,22 @@ impl OptionsMenu {
         }
     }
 
-    fn move_up(&mut self) -> Selection {
+    fn move_up(&mut self) -> Option<Selection> {
         if let Some(sel) = self.selection.checked_sub(1) {
             self.selection = sel;
-            Selection::Options
+            None
         } else {
-            self.active = false;
-            Selection::NewGameButton
+            Some(Selection::NewGameButton)
         }
     }
 
-    fn move_down(&mut self) -> Selection {
+    fn move_down(&mut self) -> Option<Selection> {
         let sel = self.selection + 1;
         if sel < self.settings.len() {
             self.selection = sel;
-            Selection::Options
+            None
         } else {
-            self.active = false;
-            Selection::QuitButton
+            Some(Selection::QuitButton)
         }
     }
 
