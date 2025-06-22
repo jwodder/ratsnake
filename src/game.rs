@@ -221,8 +221,11 @@ impl<R> Widget for &Game<R> {
         if let Some(pos) = self.collision {
             level.draw_cell(pos, consts::COLLISION_SYMBOL, consts::COLLISION_STYLE);
         }
-        // TODO: Change border glyphs when wraparound is enabled
-        Block::bordered().render(block_area, buf);
+        if self.wraparound {
+            DottedBorder.render(block_area, buf);
+        } else {
+            Block::bordered().render(block_area, buf);
+        }
         if self.dead() {
             let y = block_area.bottom();
             Span::from("Oh dear, you are dead!").render(
@@ -254,6 +257,18 @@ struct Canvas<'a> {
 }
 
 impl Canvas<'_> {
+    fn draw_char(&mut self, pos: Position, symbol: char) {
+        let Some(x) = self.area.x.checked_add(pos.x) else {
+            return;
+        };
+        let Some(y) = self.area.y.checked_add(pos.y) else {
+            return;
+        };
+        if let Some(cell) = self.buf.cell_mut((x, y)) {
+            cell.set_char(symbol);
+        }
+    }
+
     fn draw_cell(&mut self, pos: Position, symbol: char, style: Style) {
         let Some(x) = self.area.x.checked_add(pos.x) else {
             return;
@@ -297,6 +312,33 @@ impl Direction {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct DottedBorder;
+
+impl Widget for DottedBorder {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        if area.is_empty() {
+            return;
+        }
+        let size = area.as_size();
+        let max_x = size.width.saturating_sub(1);
+        let max_y = size.height.saturating_sub(1);
+        let mut canvas = Canvas { area, buf };
+        canvas.draw_char(Position::ORIGIN, '·');
+        canvas.draw_char(Position::new(max_x, 0), '·');
+        canvas.draw_char(Position::new(max_x, max_y), '·');
+        canvas.draw_char(Position::new(0, max_y), '·');
+        for x in 1..max_x {
+            canvas.draw_char(Position::new(x, 0), '⋯');
+            canvas.draw_char(Position::new(x, max_y), '⋯');
+        }
+        for y in 1..max_y {
+            canvas.draw_char(Position::new(0, y), '⋮');
+            canvas.draw_char(Position::new(max_x, y), '⋮');
+        }
+    }
+}
+
 fn decrement_in_bounds(x: u16, max: u16, wrap: bool) -> Option<u16> {
     if let Some(x2) = x.checked_sub(1) {
         Some(x2)
@@ -320,114 +362,161 @@ fn increment_in_bounds(x: u16, max: u16, wrap: bool) -> Option<u16> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::SeedableRng;
-    use rand_chacha::ChaCha12Rng;
     use rstest::rstest;
 
-    const RNG_SEED: u64 = 0x0123456789ABCDEF;
+    mod render_game {
+        use super::*;
+        use rand::SeedableRng;
+        use rand_chacha::ChaCha12Rng;
 
-    #[test]
-    fn draw_new_game() {
-        let game = Game::new(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
-        let area = Rect::new(0, 0, 80, 24);
-        let mut buffer = Buffer::empty(area);
-        game.render(area, &mut buffer);
-        let mut expected = Buffer::with_lines([
-            " Score: 0",
-            " ┌────────────────────────────────────────────────────────────────────────────┐ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                          ●                                                 │ ",
-            " │                                      @                                     │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " └────────────────────────────────────────────────────────────────────────────┘ ",
-            "",
-            "",
-        ]);
-        expected.set_style(Rect::new(40, 11, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
-        assert_eq!(buffer, expected);
-    }
+        const RNG_SEED: u64 = 0x0123456789ABCDEF;
 
-    #[test]
-    fn draw_self_collision() {
-        let mut game = Game::new(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
-        game.score = 3;
-        game.snake_head = Position::new(30, 6);
-        game.snake_body = VecDeque::from([
-            Position::new(30, 6),
-            Position::new(31, 6),
-            Position::new(32, 6),
-            Position::new(33, 6),
-            Position::new(33, 7),
-            Position::new(33, 8),
-            Position::new(33, 9),
-            Position::new(32, 9),
-            Position::new(31, 9),
-            Position::new(30, 9),
-            Position::new(30, 8),
-            Position::new(30, 7),
-        ]);
-        game.snake_len = 12;
-        game.direction = Direction::North;
-        game.collision = Some(Position::new(30, 6));
-        let area = Rect::new(0, 0, 80, 24);
-        let mut buffer = Buffer::empty(area);
-        game.render(area, &mut buffer);
-        let mut expected = Buffer::with_lines([
-            " Score: 3",
-            " ┌────────────────────────────────────────────────────────────────────────────┐ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                              *~~~                                          │ ",
-            " │                              ~  ~                                          │ ",
-            " │                          ●   ~  ~                                          │ ",
-            " │                              ~~~~                                          │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " └────────────────────────────────────────────────────────────────────────────┘ ",
-            " Oh dear, you are dead!",
-            " Press ENTER to exit.",
-        ]);
-        expected.set_style(Rect::new(32, 8, 1, 1), consts::COLLISION_STYLE);
-        expected.set_style(Rect::new(33, 8, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(34, 8, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(35, 8, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(35, 9, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(35, 10, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(35, 11, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(34, 11, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(33, 11, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(32, 11, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(32, 10, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(32, 9, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
-        assert_eq!(buffer, expected);
+        #[test]
+        fn new_game() {
+            let game = Game::new(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
+            let area = Rect::new(0, 0, 80, 24);
+            let mut buffer = Buffer::empty(area);
+            game.render(area, &mut buffer);
+            let mut expected = Buffer::with_lines([
+                " Score: 0",
+                " ┌────────────────────────────────────────────────────────────────────────────┐ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                          ●                                                 │ ",
+                " │                                      @                                     │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " └────────────────────────────────────────────────────────────────────────────┘ ",
+                "",
+                "",
+            ]);
+            expected.set_style(Rect::new(40, 11, 1, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
+            assert_eq!(buffer, expected);
+        }
+
+        #[test]
+        fn new_wraparound_game() {
+            let game = Game::new(
+                Options {
+                    wraparound: true,
+                    ..Options::default()
+                },
+                ChaCha12Rng::seed_from_u64(RNG_SEED),
+            );
+            let area = Rect::new(0, 0, 80, 24);
+            let mut buffer = Buffer::empty(area);
+            game.render(area, &mut buffer);
+            let mut expected = Buffer::with_lines([
+                " Score: 0",
+                " ·⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯· ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                          ●                                                 ⋮ ",
+                " ⋮                                      @                                     ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ⋮                                                                            ⋮ ",
+                " ·⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯· ",
+                "",
+                "",
+            ]);
+            expected.set_style(Rect::new(40, 11, 1, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
+            assert_eq!(buffer, expected);
+        }
+
+        #[test]
+        fn self_collision() {
+            let mut game = Game::new(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
+            game.score = 3;
+            game.snake_head = Position::new(30, 6);
+            game.snake_body = VecDeque::from([
+                Position::new(30, 6),
+                Position::new(31, 6),
+                Position::new(32, 6),
+                Position::new(33, 6),
+                Position::new(33, 7),
+                Position::new(33, 8),
+                Position::new(33, 9),
+                Position::new(32, 9),
+                Position::new(31, 9),
+                Position::new(30, 9),
+                Position::new(30, 8),
+                Position::new(30, 7),
+            ]);
+            game.snake_len = 12;
+            game.direction = Direction::North;
+            game.collision = Some(Position::new(30, 6));
+            let area = Rect::new(0, 0, 80, 24);
+            let mut buffer = Buffer::empty(area);
+            game.render(area, &mut buffer);
+            let mut expected = Buffer::with_lines([
+                " Score: 3",
+                " ┌────────────────────────────────────────────────────────────────────────────┐ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                              *~~~                                          │ ",
+                " │                              ~  ~                                          │ ",
+                " │                          ●   ~  ~                                          │ ",
+                " │                              ~~~~                                          │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " │                                                                            │ ",
+                " └────────────────────────────────────────────────────────────────────────────┘ ",
+                " Oh dear, you are dead!",
+                " Press ENTER to exit.",
+            ]);
+            expected.set_style(Rect::new(32, 8, 1, 1), consts::COLLISION_STYLE);
+            expected.set_style(Rect::new(33, 8, 1, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(34, 8, 1, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(35, 8, 1, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(35, 9, 1, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(35, 10, 1, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(35, 11, 1, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(34, 11, 1, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(33, 11, 1, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(32, 11, 1, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(32, 10, 1, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(32, 9, 1, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
+            assert_eq!(buffer, expected);
+        }
     }
 
     #[rstest]
