@@ -1,4 +1,5 @@
 use super::direction::Direction;
+use super::snake::Snake;
 use crate::consts;
 use rand::{
     distr::{Bernoulli, Distribution},
@@ -47,16 +48,17 @@ impl LevelMap {
         }
     }
 
+    pub(super) fn new_snake(&self) -> Snake {
+        let (head, direction) = self.snake_start;
+        Snake::new(head, direction)
+    }
+
     pub(super) fn bounds(&self) -> Bounds {
         self.bounds
     }
 
     pub(super) fn obstacles(&self) -> &HashSet<Position> {
         &self.obstacles
-    }
-
-    pub(super) fn snake_start(&self) -> (Position, Direction) {
-        self.snake_start
     }
 
     pub(super) fn size(&self) -> Size {

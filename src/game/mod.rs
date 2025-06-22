@@ -1,7 +1,9 @@
 mod direction;
 mod levels;
+mod snake;
 use self::direction::Direction;
 use self::levels::{Bounds, LevelMap};
+use self::snake::Snake;
 use crate::app::AppState;
 use crate::command::Command;
 use crate::consts;
@@ -17,7 +19,7 @@ use ratatui::{
     widgets::{Block, Widget},
     Frame,
 };
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 use std::io;
 use std::time::Instant;
 
@@ -25,10 +27,7 @@ use std::time::Instant;
 pub(crate) struct Game<R = rand::rngs::ThreadRng> {
     rng: R,
     score: u32,
-    snake_head: Position,
-    snake_body: VecDeque<Position>,
-    snake_len: usize,
-    direction: Direction,
+    snake: Snake,
     fruits: HashSet<Position>,
     dead: bool,
     map: LevelMap,
@@ -49,14 +48,11 @@ impl<R: Rng> Game<R> {
         if options.obstacles {
             map.set_obstacles(&mut rng);
         }
-        let (snake_head, direction) = map.snake_start();
+        let snake = map.new_snake();
         let mut game = Game {
             rng,
             score: 0,
-            snake_body: VecDeque::new(),
-            snake_head,
-            snake_len: consts::INITIAL_SNAKE_LENGTH,
-            direction,
+            snake,
             fruits: HashSet::new(),
             dead: false,
             map,
@@ -104,22 +100,16 @@ impl<R: Rng> Game<R> {
         if self.dead {
             return;
         }
-        if let Some(pos) = self.direction.advance(self.snake_head, self.map.bounds()) {
-            self.snake_body.push_back(self.snake_head);
-            self.snake_head = pos;
-        } else {
+        if !self.snake.advance(self.map.bounds()) {
             self.dead = true;
             return;
         }
-        while self.snake_body.len() > self.snake_len {
-            let _ = self.snake_body.pop_front();
-        }
-        if self.fruits.remove(&self.snake_head) {
+        if self.fruits.remove(&self.snake.head()) {
             self.score += 1;
-            self.snake_len += consts::SNAKE_GROWTH;
+            self.snake.grow();
             self.place_fruit();
-        } else if self.snake_body.contains(&self.snake_head)
-            || self.map.obstacles().contains(&self.snake_head)
+        } else if self.snake.body().contains(&self.snake.head())
+            || self.map.obstacles().contains(&self.snake.head())
         {
             self.dead = true;
         }
@@ -127,8 +117,8 @@ impl<R: Rng> Game<R> {
 
     fn place_fruit(&mut self) {
         let mut occupied = &self.fruits | self.map.obstacles();
-        occupied.insert(self.snake_head);
-        occupied.extend(self.snake_body.iter().copied());
+        occupied.insert(self.snake.head());
+        occupied.extend(self.snake.body().iter().copied());
         self.fruits.extend(
             self.map
                 .bounds()
@@ -147,10 +137,10 @@ impl<R> Game<R> {
     fn handle_event(&mut self, event: Event) -> Option<AppState> {
         match Command::from_key_event(event.as_key_press_event()?)? {
             Command::Quit => return Some(AppState::Quit),
-            Command::Up => self.direction = Direction::North,
-            Command::Left => self.direction = Direction::West,
-            Command::Down => self.direction = Direction::South,
-            Command::Right => self.direction = Direction::East,
+            Command::Up => self.snake.turn(Direction::North),
+            Command::Left => self.snake.turn(Direction::West),
+            Command::Down => self.snake.turn(Direction::South),
+            Command::Right => self.snake.turn(Direction::East),
             _ => (),
         }
         None
@@ -187,7 +177,7 @@ impl<R> Widget for &Game<R> {
             area: level_area,
             buf,
         };
-        for &p in &self.snake_body {
+        for &p in self.snake.body() {
             level.draw_cell(p, consts::SNAKE_BODY_SYMBOL, consts::SNAKE_STYLE);
         }
         for &pos in &self.fruits {
@@ -200,13 +190,13 @@ impl<R> Widget for &Game<R> {
         // whatever it's colliding with
         if self.dead {
             level.draw_cell(
-                self.snake_head,
+                self.snake.head(),
                 consts::COLLISION_SYMBOL,
                 consts::COLLISION_STYLE,
             );
         } else {
             level.draw_cell(
-                self.snake_head,
+                self.snake.head(),
                 consts::SNAKE_HEAD_SYMBOL,
                 consts::SNAKE_STYLE,
             );
@@ -285,6 +275,7 @@ mod tests {
     use crate::options::LevelSize;
     use rand::SeedableRng;
     use rand_chacha::ChaCha12Rng;
+    use std::collections::VecDeque;
 
     const RNG_SEED: u64 = 0x0123456789ABCDEF;
 
@@ -374,8 +365,8 @@ mod tests {
     fn self_collision() {
         let mut game = Game::new_with_rng(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
         game.score = 3;
-        game.snake_head = Position::new(30, 6);
-        game.snake_body = VecDeque::from([
+        game.snake.head = Position::new(30, 6);
+        game.snake.body = VecDeque::from([
             Position::new(30, 6),
             Position::new(31, 6),
             Position::new(32, 6),
@@ -389,8 +380,8 @@ mod tests {
             Position::new(30, 8),
             Position::new(30, 7),
         ]);
-        game.snake_len = 12;
-        game.direction = Direction::North;
+        game.snake.max_len = 12;
+        game.snake.direction = Direction::North;
         game.dead = true;
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
