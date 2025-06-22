@@ -18,7 +18,6 @@ use ratatui::{
     },
     Frame,
 };
-use std::io;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct MainMenu {
@@ -38,7 +37,7 @@ impl MainMenu {
         frame.render_widget(self, frame.area());
     }
 
-    pub(crate) fn process_input(&mut self) -> io::Result<Option<AppState>> {
+    pub(crate) fn process_input(&mut self) -> std::io::Result<Option<AppState>> {
         Ok(self.handle_event(read()?))
     }
 

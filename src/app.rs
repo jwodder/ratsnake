@@ -2,7 +2,6 @@ use crate::game::Game;
 use crate::menu::MainMenu;
 use crate::options::Options;
 use ratatui::{backend::Backend, Terminal};
-use std::io;
 
 #[derive(Clone, Debug)]
 pub(crate) struct App {
@@ -15,7 +14,7 @@ impl App {
         App { state }
     }
 
-    pub(crate) fn run<B: Backend>(mut self, mut terminal: Terminal<B>) -> io::Result<()> {
+    pub(crate) fn run<B: Backend>(mut self, mut terminal: Terminal<B>) -> std::io::Result<()> {
         while !self.quitting() {
             self.draw(&mut terminal)?;
             self.process_input()?;
@@ -23,7 +22,7 @@ impl App {
         Ok(())
     }
 
-    fn draw<B: Backend>(&self, terminal: &mut Terminal<B>) -> io::Result<()> {
+    fn draw<B: Backend>(&self, terminal: &mut Terminal<B>) -> std::io::Result<()> {
         match self.state {
             AppState::Main(ref menu) => {
                 terminal.draw(|frame| menu.draw(frame))?;
@@ -36,7 +35,7 @@ impl App {
         Ok(())
     }
 
-    fn process_input(&mut self) -> io::Result<()> {
+    fn process_input(&mut self) -> std::io::Result<()> {
         match self.state {
             AppState::Main(ref mut menu) => {
                 if let Some(state) = menu.process_input()? {

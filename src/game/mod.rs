@@ -20,7 +20,6 @@ use ratatui::{
     Frame,
 };
 use std::collections::HashSet;
-use std::io;
 use std::time::Instant;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -63,7 +62,7 @@ impl<R: Rng> Game<R> {
         game
     }
 
-    pub(crate) fn process_input(&mut self) -> io::Result<Option<AppState>> {
+    pub(crate) fn process_input(&mut self) -> std::io::Result<Option<AppState>> {
         if self.dead {
             if let Some(ev) = read()?.as_key_press_event() {
                 if matches!(
@@ -79,7 +78,7 @@ impl<R: Rng> Game<R> {
         Ok(None)
     }
 
-    fn tick(&mut self) -> io::Result<Option<AppState>> {
+    fn tick(&mut self) -> std::io::Result<Option<AppState>> {
         let mut wait = consts::TICK_DURATION;
         loop {
             let now = Instant::now();
