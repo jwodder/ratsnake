@@ -16,7 +16,7 @@ impl Logo {
     pub(crate) const WIDTH: u16 = Self::RAT_WIDTH + Self::SNAKE_WIDTH;
 
     #[rustfmt::skip]
-    const RAT: [&str; Self::HEIGHT as usize] = [
+    const RAT: [&'static str; Self::HEIGHT as usize] = [
          " ____       _  ",
         r"|  _ \ __ _| |_",
          "| |_) / _` | __",
@@ -25,7 +25,7 @@ impl Logo {
     ];
 
     #[rustfmt::skip]
-    const SNAKE: [&str; Self::HEIGHT as usize] = [
+    const SNAKE: [&'static str; Self::HEIGHT as usize] = [
          " ____              _        ",
          "/ ___| _ __   __ _| | _____ ",
         r"\___ \| '_ \ / _` | |/ / _ \",
