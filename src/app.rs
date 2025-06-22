@@ -1,392 +1,66 @@
-use crate::consts;
-use crate::util::{RectExt, Side};
-use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
-use rand::{seq::IteratorRandom, Rng};
-use ratatui::{
-    backend::Backend,
-    buffer::Buffer,
-    layout::{Flex, Layout, Margin, Position, Rect, Size},
-    style::Style,
-    text::Span,
-    widgets::{Block, Widget},
-    Terminal,
-};
-use std::collections::VecDeque;
+use crate::game::Game;
+use crate::mainmenu::MainMenu;
+use crate::options::Options;
+use ratatui::{backend::Backend, Terminal};
 use std::io;
-use std::time::Instant;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct App<R> {
-    rng: R,
-    score: u32,
-    snake_head: Position,
-    snake_body: VecDeque<Position>,
-    snake_len: usize,
-    direction: Direction,
-    fruit: Option<Position>,
-    collision: Option<Position>,
-    quitting: bool,
-    level_size: Size,
-    // walls: HashSet<Position>,
+#[derive(Clone, Debug)]
+pub(crate) struct App {
+    state: AppState,
 }
 
-impl<R: Rng> App<R> {
-    pub(crate) fn new(rng: R) -> App<R> {
-        let level_size = consts::LEVEL_SIZE;
-        let mut app = App {
-            rng,
-            score: 0,
-            snake_head: Position::new(level_size.width / 2, level_size.height / 2),
-            snake_body: VecDeque::new(),
-            snake_len: consts::INITIAL_SNAKE_LENGTH,
-            direction: Direction::North,
-            fruit: None,
-            collision: None,
-            quitting: false,
-            level_size,
-        };
-        app.place_fruit();
-        app
+impl App {
+    pub(crate) fn new() -> App {
+        let state = AppState::Main(MainMenu::new(Options::default()));
+        App { state }
     }
 
     pub(crate) fn run<B: Backend>(mut self, mut terminal: Terminal<B>) -> io::Result<()> {
         while !self.quitting() {
             self.draw(&mut terminal)?;
-            if self.dead() {
-                if let Some(ev) = read()?.as_key_press_event() {
-                    if ev == KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)
-                        || ev == KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL)
-                    {
-                        break;
-                    }
-                }
-            } else {
-                self.tick()?;
-            }
+            self.process_input()?;
         }
         Ok(())
     }
 
-    fn tick(&mut self) -> io::Result<()> {
-        let mut wait = consts::TICK_DURATION;
-        loop {
-            let now = Instant::now();
-            if poll(wait)? {
-                self.handle_event(read()?);
-                if self.quitting() {
-                    return Ok(());
-                }
-                wait = wait.saturating_sub(now.elapsed());
-            } else {
-                self.advance();
-                break;
-            }
-        }
-        Ok(())
-    }
-
-    fn advance(&mut self) {
-        if self.dead() {
-            return;
-        }
-        let Position { mut x, mut y } = self.snake_head;
-        match self.direction {
-            Direction::North => {
-                let Some(y2) = y.checked_sub(1) else {
-                    self.collision = Some(self.snake_head);
-                    return;
-                };
-                y = y2;
-            }
-            Direction::East => {
-                let Some(x2) = x.checked_add(1) else {
-                    self.collision = Some(self.snake_head);
-                    return;
-                };
-                x = x2;
-            }
-            Direction::South => {
-                let Some(y2) = y.checked_add(1) else {
-                    self.collision = Some(self.snake_head);
-                    return;
-                };
-                y = y2;
-            }
-            Direction::West => {
-                let Some(x2) = x.checked_sub(1) else {
-                    self.collision = Some(self.snake_head);
-                    return;
-                };
-                x = x2;
-            }
-        }
-        if x >= self.level_size.width || y >= self.level_size.height {
-            self.collision = Some(self.snake_head);
-            return;
-        }
-        self.snake_body.push_back(self.snake_head);
-        self.snake_head = Position { x, y };
-        while self.snake_body.len() > self.snake_len {
-            let _ = self.snake_body.pop_front();
-        }
-        if Some(self.snake_head) == self.fruit {
-            self.fruit = None;
-            self.score += 1;
-            self.snake_len += consts::SNAKE_GROWTH;
-            self.place_fruit();
-        } else if self.snake_body.contains(&self.snake_head) {
-            self.collision = Some(self.snake_head);
-        }
-        // TODO later: Check for collision with walls
-    }
-
-    fn place_fruit(&mut self) {
-        self.fruit = Rect::from((Position::ORIGIN, self.level_size))
-            .positions()
-            // TODO later: exclude walls from consideration
-            .filter(|&p| p != self.snake_head && !self.snake_body.contains(&p))
-            .choose(&mut self.rng);
-    }
-}
-
-impl<R> App<R> {
     fn draw<B: Backend>(&self, terminal: &mut Terminal<B>) -> io::Result<()> {
-        terminal.draw(|frame| frame.render_widget(self, frame.area()))?;
+        match self.state {
+            AppState::Main(ref menu) => {
+                terminal.draw(|frame| menu.draw(frame))?;
+            }
+            AppState::Game(ref game) => {
+                terminal.draw(|frame| game.draw(frame))?;
+            }
+            AppState::Quit => (),
+        }
         Ok(())
     }
 
-    fn handle_event(&mut self, event: Event) {
-        let normal_modifiers = KeyModifiers::NONE | KeyModifiers::SHIFT;
-        if let Some(KeyEvent {
-            code, modifiers, ..
-        }) = event.as_key_press_event()
-        {
-            if (modifiers, code) == (KeyModifiers::CONTROL, KeyCode::Char('c')) {
-                self.quitting = true;
-            } else if normal_modifiers.contains(modifiers) {
-                match code {
-                    KeyCode::Char('w' | 'k') | KeyCode::Up => self.direction = Direction::North,
-                    KeyCode::Char('a' | 'h') | KeyCode::Left => self.direction = Direction::West,
-                    KeyCode::Char('s' | 'j') | KeyCode::Down => self.direction = Direction::South,
-                    KeyCode::Char('d' | 'l') | KeyCode::Right => self.direction = Direction::East,
-                    _ => (),
+    fn process_input(&mut self) -> io::Result<()> {
+        match self.state {
+            AppState::Main(ref mut menu) => {
+                if let Some(state) = menu.process_input()? {
+                    self.state = state;
                 }
             }
+            AppState::Game(ref mut game) => {
+                if let Some(state) = game.process_input()? {
+                    self.state = state;
+                }
+            }
+            AppState::Quit => (),
         }
-    }
-
-    fn dead(&self) -> bool {
-        self.collision.is_some()
+        Ok(())
     }
 
     fn quitting(&self) -> bool {
-        self.quitting
+        matches!(self.state, AppState::Quit)
     }
 }
 
-impl<R> Widget for &App<R> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let [display] = Layout::horizontal([consts::DISPLAY_SIZE.width])
-            .flex(Flex::Center)
-            .areas(area);
-        let [display] = Layout::vertical([consts::DISPLAY_SIZE.height])
-            .flex(Flex::Center)
-            .areas(display);
-        let display = display.shave(Side::Left).shave(Side::Right);
-        Span::from(format!("Score: {}", self.score)).render(
-            Rect {
-                height: 1,
-                ..display
-            },
-            buf,
-        );
-        let block_area = display
-            .shave(Side::Top)
-            .shave(Side::Bottom)
-            .shave(Side::Bottom);
-        let level_area = block_area.inner(Margin::new(1, 1));
-        let mut level = Canvas {
-            area: level_area,
-            buf,
-        };
-        level.draw_cell(
-            self.snake_head,
-            consts::SNAKE_HEAD_SYMBOL,
-            consts::SNAKE_STYLE,
-        );
-        for &p in &self.snake_body {
-            level.draw_cell(p, consts::SNAKE_BODY_SYMBOL, consts::SNAKE_STYLE);
-        }
-        if let Some(pos) = self.fruit {
-            level.draw_cell(pos, consts::FRUIT_SYMBOL, consts::FRUIT_STYLE);
-        }
-        // TODO later: Draw walls
-        if let Some(pos) = self.collision {
-            level.draw_cell(pos, consts::COLLISION_SYMBOL, consts::COLLISION_STYLE);
-        }
-        Block::bordered().render(block_area, buf);
-        if self.dead() {
-            let y = block_area.bottom();
-            Span::from("Oh dear, you are dead!").render(
-                Rect {
-                    y,
-                    height: 1,
-                    ..display
-                },
-                buf,
-            );
-            if let Some(y) = y.checked_add(1) {
-                Span::from("Press ENTER to exit.").render(
-                    Rect {
-                        y,
-                        height: 1,
-                        ..display
-                    },
-                    buf,
-                );
-            }
-        }
-    }
-}
-
-#[derive(Debug, Eq, PartialEq)]
-struct Canvas<'a> {
-    area: Rect,
-    buf: &'a mut Buffer,
-}
-
-impl Canvas<'_> {
-    fn draw_cell(&mut self, pos: Position, symbol: char, style: Style) {
-        let Some(x) = self.area.x.checked_add(pos.x) else {
-            return;
-        };
-        let Some(y) = self.area.y.checked_add(pos.y) else {
-            return;
-        };
-        if let Some(cell) = self.buf.cell_mut((x, y)) {
-            cell.set_char(symbol);
-            cell.set_style(style);
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Direction {
-    North,
-    East,
-    South,
-    West,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use rand::SeedableRng;
-    use rand_chacha::ChaCha12Rng;
-
-    const RNG_SEED: u64 = 0x0123456789ABCDEF;
-
-    #[test]
-    fn draw_startup() {
-        let app = App::new(ChaCha12Rng::seed_from_u64(RNG_SEED));
-        let area = Rect::new(0, 0, 80, 24);
-        let mut buffer = Buffer::empty(area);
-        app.render(area, &mut buffer);
-        let mut expected = Buffer::with_lines([
-            " Score: 0",
-            " ┌────────────────────────────────────────────────────────────────────────────┐ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                          ●                                                 │ ",
-            " │                                      @                                     │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " └────────────────────────────────────────────────────────────────────────────┘ ",
-            "",
-            "",
-        ]);
-        expected.set_style(Rect::new(40, 11, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
-        assert_eq!(buffer, expected);
-    }
-
-    #[test]
-    fn draw_self_collision() {
-        let mut app = App::new(ChaCha12Rng::seed_from_u64(RNG_SEED));
-        app.score = 3;
-        app.snake_head = Position::new(30, 6);
-        app.snake_body = VecDeque::from([
-            Position::new(30, 6),
-            Position::new(31, 6),
-            Position::new(32, 6),
-            Position::new(33, 6),
-            Position::new(33, 7),
-            Position::new(33, 8),
-            Position::new(33, 9),
-            Position::new(32, 9),
-            Position::new(31, 9),
-            Position::new(30, 9),
-            Position::new(30, 8),
-            Position::new(30, 7),
-        ]);
-        app.snake_len = 12;
-        app.direction = Direction::North;
-        app.collision = Some(Position::new(30, 6));
-        let area = Rect::new(0, 0, 80, 24);
-        let mut buffer = Buffer::empty(area);
-        app.render(area, &mut buffer);
-        let mut expected = Buffer::with_lines([
-            " Score: 3",
-            " ┌────────────────────────────────────────────────────────────────────────────┐ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                              *~~~                                          │ ",
-            " │                              ~  ~                                          │ ",
-            " │                          ●   ~  ~                                          │ ",
-            " │                              ~~~~                                          │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " │                                                                            │ ",
-            " └────────────────────────────────────────────────────────────────────────────┘ ",
-            " Oh dear, you are dead!",
-            " Press ENTER to exit.",
-        ]);
-        expected.set_style(Rect::new(32, 8, 1, 1), consts::COLLISION_STYLE);
-        expected.set_style(Rect::new(33, 8, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(34, 8, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(35, 8, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(35, 9, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(35, 10, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(35, 11, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(34, 11, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(33, 11, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(32, 11, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(32, 10, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(32, 9, 1, 1), consts::SNAKE_STYLE);
-        expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
-        assert_eq!(buffer, expected);
-    }
+#[derive(Clone, Debug)]
+pub(crate) enum AppState {
+    Main(MainMenu),
+    Game(Game),
+    Quit,
 }
