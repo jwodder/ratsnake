@@ -1,10 +1,11 @@
 use crate::app::AppState;
+use crate::command::Command;
 use crate::consts;
 use crate::game::Game;
 use crate::logo::Logo;
 use crate::options::{LevelSize, Options};
 use crate::util::get_display_area;
-use crossterm::event::{read, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{read, Event};
 use ratatui::{
     buffer::Buffer,
     layout::{Flex, Layout, Rect},
@@ -42,47 +43,41 @@ impl StartupScreen {
     }
 
     fn handle_event(&mut self, event: Event) -> Option<AppState> {
-        let normal_modifiers = KeyModifiers::NONE | KeyModifiers::SHIFT;
-        if let Some(KeyEvent {
-            code, modifiers, ..
-        }) = event.as_key_press_event()
-        {
-            if (modifiers, code) == (KeyModifiers::CONTROL, KeyCode::Char('c')) {
-                return Some(AppState::Quit);
-            } else if normal_modifiers.contains(modifiers) {
-                match (self.selection, code) {
-                    (Selection::NewGameButton, KeyCode::Enter) | (_, KeyCode::Char('n')) => {
-                        return Some(AppState::Game(self.new_game()));
-                    }
-                    (Selection::NewGameButton, KeyCode::Char('s' | 'j') | KeyCode::Down) => {
-                        self.selection = Selection::Options;
-                        self.options.active = true;
-                    }
-                    (Selection::Options, KeyCode::Char('w' | 'k') | KeyCode::Up) => {
-                        self.selection = self.options.move_up();
-                    }
-                    (Selection::Options, KeyCode::Char('s' | 'j') | KeyCode::Down) => {
-                        self.selection = self.options.move_down();
-                    }
-                    (Selection::Options, KeyCode::Char('a' | 'h') | KeyCode::Left) => {
-                        self.options.move_left();
-                    }
-                    (Selection::Options, KeyCode::Char('d' | 'l') | KeyCode::Right) => {
-                        self.options.move_right();
-                    }
-                    (Selection::Options, KeyCode::Char(' ') | KeyCode::Enter) => {
-                        self.options.toggle();
-                    }
-                    (Selection::QuitButton, KeyCode::Enter) | (_, KeyCode::Char('q')) => {
-                        return Some(AppState::Quit);
-                    }
-                    (Selection::QuitButton, KeyCode::Char('w' | 'k') | KeyCode::Up) => {
-                        self.selection = Selection::Options;
-                        self.options.active = true;
-                    }
-                    _ => (),
-                }
+        match (
+            self.selection,
+            Command::from_key_event(event.as_key_press_event()?)?,
+        ) {
+            (_, Command::Quit) => return Some(AppState::Quit),
+            (Selection::NewGameButton, Command::Enter) | (_, Command::N) => {
+                return Some(AppState::Game(self.new_game()));
             }
+            (Selection::NewGameButton, Command::Down) => {
+                self.selection = Selection::Options;
+                self.options.active = true;
+            }
+            (Selection::Options, Command::Up) => {
+                self.selection = self.options.move_up();
+            }
+            (Selection::Options, Command::Down) => {
+                self.selection = self.options.move_down();
+            }
+            (Selection::Options, Command::Left) => {
+                self.options.move_left();
+            }
+            (Selection::Options, Command::Right) => {
+                self.options.move_right();
+            }
+            (Selection::Options, Command::Space | Command::Enter) => {
+                self.options.toggle();
+            }
+            (Selection::QuitButton, Command::Enter) | (_, Command::Q) => {
+                return Some(AppState::Quit);
+            }
+            (Selection::QuitButton, Command::Up) => {
+                self.selection = Selection::Options;
+                self.options.active = true;
+            }
+            _ => (),
         }
         None
     }
@@ -400,6 +395,7 @@ mod tests {
 
     mod startup {
         use super::*;
+        use crossterm::event::KeyCode;
         use ratatui::{buffer::Buffer, layout::Rect};
 
         #[test]

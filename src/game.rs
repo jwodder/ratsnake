@@ -1,8 +1,9 @@
 use crate::app::AppState;
+use crate::command::Command;
 use crate::consts;
 use crate::options::Options;
 use crate::util::{get_display_area, RectExt, Side};
-use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{poll, read, Event};
 use rand::{
     distr::{Bernoulli, Distribution},
     seq::IteratorRandom,
@@ -84,9 +85,10 @@ impl<R: Rng> Game<R> {
     pub(crate) fn process_input(&mut self) -> io::Result<Option<AppState>> {
         if self.dead() {
             if let Some(ev) = read()?.as_key_press_event() {
-                if ev == KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)
-                    || ev == KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL)
-                {
+                if matches!(
+                    Command::from_key_event(ev),
+                    Some(Command::Quit | Command::Enter)
+                ) {
                     return Ok(Some(AppState::Quit));
                 }
             }
@@ -160,22 +162,13 @@ impl<R> Game<R> {
     }
 
     fn handle_event(&mut self, event: Event) -> Option<AppState> {
-        let normal_modifiers = KeyModifiers::NONE | KeyModifiers::SHIFT;
-        if let Some(KeyEvent {
-            code, modifiers, ..
-        }) = event.as_key_press_event()
-        {
-            if (modifiers, code) == (KeyModifiers::CONTROL, KeyCode::Char('c')) {
-                return Some(AppState::Quit);
-            } else if normal_modifiers.contains(modifiers) {
-                match code {
-                    KeyCode::Char('w' | 'k') | KeyCode::Up => self.direction = Direction::North,
-                    KeyCode::Char('a' | 'h') | KeyCode::Left => self.direction = Direction::West,
-                    KeyCode::Char('s' | 'j') | KeyCode::Down => self.direction = Direction::South,
-                    KeyCode::Char('d' | 'l') | KeyCode::Right => self.direction = Direction::East,
-                    _ => (),
-                }
-            }
+        match Command::from_key_event(event.as_key_press_event()?)? {
+            Command::Quit => return Some(AppState::Quit),
+            Command::Up => self.direction = Direction::North,
+            Command::Left => self.direction = Direction::West,
+            Command::Down => self.direction = Direction::South,
+            Command::Right => self.direction = Direction::East,
+            _ => (),
         }
         None
     }

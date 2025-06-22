@@ -1,4 +1,5 @@
 mod app;
+mod command;
 mod consts;
 mod game;
 mod logo;
