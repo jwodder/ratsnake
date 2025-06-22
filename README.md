@@ -40,6 +40,8 @@ immediately end the program.
 Main Menu
 ---------
 
+![Screenshot of the main menu](screenshots/mainmenu.png)
+
 The main menu allows the user to configure various options for the game of
 Snake before starting a game.  The following options can be set:
 
@@ -76,6 +78,8 @@ Snake before starting a game.  The following options can be set:
 
 Game
 ----
+
+![Screenshot of a game](screenshots/game.png)
 
 Upon selecting "Play" in the main menu, a game of Snake starts immediately with
 the configured options.  The snake advances one cell at a time at regular
