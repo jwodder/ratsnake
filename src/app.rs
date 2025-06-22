@@ -1,6 +1,6 @@
 use crate::game::Game;
+use crate::mainmenu::MainMenu;
 use crate::options::Options;
-use crate::startup::StartupScreen;
 use ratatui::{backend::Backend, Terminal};
 use std::io;
 
@@ -11,7 +11,7 @@ pub(crate) struct App {
 
 impl App {
     pub(crate) fn new() -> App {
-        let state = AppState::Startup(StartupScreen::new(Options::default()));
+        let state = AppState::Main(MainMenu::new(Options::default()));
         App { state }
     }
 
@@ -25,8 +25,8 @@ impl App {
 
     fn draw<B: Backend>(&self, terminal: &mut Terminal<B>) -> io::Result<()> {
         match self.state {
-            AppState::Startup(ref startup) => {
-                terminal.draw(|frame| startup.draw(frame))?;
+            AppState::Main(ref menu) => {
+                terminal.draw(|frame| menu.draw(frame))?;
             }
             AppState::Game(ref game) => {
                 terminal.draw(|frame| game.draw(frame))?;
@@ -38,8 +38,8 @@ impl App {
 
     fn process_input(&mut self) -> io::Result<()> {
         match self.state {
-            AppState::Startup(ref mut startup) => {
-                if let Some(state) = startup.process_input()? {
+            AppState::Main(ref mut menu) => {
+                if let Some(state) = menu.process_input()? {
                     self.state = state;
                 }
             }
@@ -60,7 +60,7 @@ impl App {
 
 #[derive(Clone, Debug)]
 pub(crate) enum AppState {
-    Startup(StartupScreen),
+    Main(MainMenu),
     Game(Game),
     Quit,
 }

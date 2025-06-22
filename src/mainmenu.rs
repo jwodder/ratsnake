@@ -21,14 +21,14 @@ use std::fmt;
 use std::io;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct StartupScreen {
+pub(crate) struct MainMenu {
     selection: Selection,
     options: OptionsMenu,
 }
 
-impl StartupScreen {
+impl MainMenu {
     pub(crate) fn new(options: Options) -> Self {
-        StartupScreen {
+        MainMenu {
             selection: Selection::default(),
             options: OptionsMenu::new(options),
         }
@@ -102,7 +102,7 @@ const INSTRUCTIONS: [&str; INSTRUCTIONS_HEIGHT as usize] = [
     "don't hit yourself!",
 ];
 
-impl Widget for &StartupScreen {
+impl Widget for &MainMenu {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let display = get_display_area(area);
         let [logo_area, instructions_area, play_area, options_area, quit_area] =
@@ -156,7 +156,8 @@ enum Selection {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct OptionsMenu {
-    /// Is the currently-selected startup screen item an element of this menu?
+    /// Is the currently-selected main menu screen item an element of this
+    /// menu?
     active: bool,
     /// Index of the currently-selected item in the menu; if the menu isn't
     /// active, this is the index of the most recently-selected item.
@@ -376,17 +377,17 @@ impl fmt::Display for Adjustable {
 mod tests {
     use super::*;
 
-    mod startup {
+    mod main_menu {
         use super::*;
         use crossterm::event::KeyCode;
         use ratatui::{buffer::Buffer, layout::Rect};
 
         #[test]
         fn draw_initial() {
-            let startup = StartupScreen::new(Options::default());
+            let menu = MainMenu::new(Options::default());
             let area = Rect::new(0, 0, 80, 24);
             let mut buffer = Buffer::empty(area);
-            startup.render(area, &mut buffer);
+            menu.render(area, &mut buffer);
             let mut expected = Buffer::with_lines([
                 "                    ____       _   ____              _                          ",
                 r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
@@ -422,12 +423,12 @@ mod tests {
         #[test]
         fn interact_options() {
             let area = Rect::new(0, 0, 80, 24);
-            let mut startup = StartupScreen::new(Options::default());
-            assert!(startup
+            let mut menu = MainMenu::new(Options::default());
+            assert!(menu
                 .handle_event(Event::Key(KeyCode::Down.into()))
                 .is_none());
             let mut buffer = Buffer::empty(area);
-            startup.render(area, &mut buffer);
+            menu.render(area, &mut buffer);
             let mut expected = Buffer::with_lines([
                 "                    ____       _   ____              _                          ",
                 r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
@@ -459,11 +460,11 @@ mod tests {
             expected.set_style(Rect::new(28, 16, 24, 1), consts::MENU_SELECTION_STYLE);
             assert_eq!(buffer, expected);
 
-            assert!(startup
+            assert!(menu
                 .handle_event(Event::Key(KeyCode::Char(' ').into()))
                 .is_none());
             let mut buffer = Buffer::empty(area);
-            startup.render(area, &mut buffer);
+            menu.render(area, &mut buffer);
             let mut expected = Buffer::with_lines([
                 "                    ____       _   ____              _                          ",
                 r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
@@ -495,20 +496,20 @@ mod tests {
             expected.set_style(Rect::new(28, 16, 24, 1), consts::MENU_SELECTION_STYLE);
             assert_eq!(buffer, expected);
 
-            assert!(startup
+            assert!(menu
                 .handle_event(Event::Key(KeyCode::Down.into()))
                 .is_none());
-            assert!(startup
+            assert!(menu
                 .handle_event(Event::Key(KeyCode::Down.into()))
                 .is_none());
-            assert!(startup
+            assert!(menu
                 .handle_event(Event::Key(KeyCode::Down.into()))
                 .is_none());
-            assert!(startup
+            assert!(menu
                 .handle_event(Event::Key(KeyCode::Char(' ').into()))
                 .is_none());
             let mut buffer = Buffer::empty(area);
-            startup.render(area, &mut buffer);
+            menu.render(area, &mut buffer);
             let mut expected = Buffer::with_lines([
                 "                    ____       _   ____              _                          ",
                 r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
@@ -540,11 +541,11 @@ mod tests {
             expected.set_style(Rect::new(28, 19, 24, 1), consts::MENU_SELECTION_STYLE);
             assert_eq!(buffer, expected);
 
-            assert!(startup
+            assert!(menu
                 .handle_event(Event::Key(KeyCode::Left.into()))
                 .is_none());
             let mut buffer = Buffer::empty(area);
-            startup.render(area, &mut buffer);
+            menu.render(area, &mut buffer);
             let mut expected = Buffer::with_lines([
                 "                    ____       _   ____              _                          ",
                 r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
@@ -576,11 +577,11 @@ mod tests {
             expected.set_style(Rect::new(28, 19, 24, 1), consts::MENU_SELECTION_STYLE);
             assert_eq!(buffer, expected);
 
-            assert!(startup
+            assert!(menu
                 .handle_event(Event::Key(KeyCode::Left.into()))
                 .is_none());
             let mut buffer = Buffer::empty(area);
-            startup.render(area, &mut buffer);
+            menu.render(area, &mut buffer);
             let mut expected = Buffer::with_lines([
                 "                    ____       _   ____              _                          ",
                 r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
