@@ -5,10 +5,8 @@
 [![MIT License](https://img.shields.io/github/license/jwodder/ratsnake.svg)](https://opensource.org/licenses/MIT)
 
 `ratsnake` is an implementation of the video game [Snake][] in [Rust][] built
-using the [Ratatui][] library.  Move the snake around with arrow keys,
-<kbd>h</kbd>/<kbd>j</kbd>/<kbd>k</kbd>/<kbd>l</kbd>, or
-<kbd>w</kbd>/<kbd>a</kbd>/<kbd>s</kbd>/<kbd>d</kbd> in order to eat the red
-dots and grow — but don't collide with yourself!
+using the [Ratatui][] library.  Guide the snake around the level to eat fruits,
+making it grow longer, but don't run into yourself!
 
 [Snake]: https://en.wikipedia.org/wiki/Snake_(video_game_genre)
 [Rust]: https://www.rust-lang.org
@@ -22,3 +20,72 @@ installed](https://www.rust-lang.org/tools/install).  You can then build the
 latest version of `ratsnake` and install it in `~/.cargo/bin` by running:
 
     cargo install --git https://github.com/jwodder/ratsnake
+
+Usage
+=====
+
+Run `ratsnake` to bring up the program's main menu.  The `ratsnake` program
+currently does not recognize any command-line options.
+
+`ratsnake` is optimized for display on 80 column by 24 line terminals.  If your
+terminal is bigger than this, the interface will be centered in the middle.  If
+your terminal is smaller, you're going to have a bad time.
+
+All screens in `ratsnake` support movement with the arrow keys,
+<kbd>h</kbd>/<kbd>j</kbd>/<kbd>k</kbd>/<kbd>l</kbd>, and
+<kbd>w</kbd>/<kbd>a</kbd>/<kbd>s</kbd>/<kbd>d</kbd>.  In addition, pressing
+<kbd>Ctrl</kbd>+<kbd>C</kbd> at any point during program execution will
+immediately end the program.
+
+Main Menu
+---------
+
+The main menu allows the user to configure various options for the game of
+Snake before starting a game.  The following options can be set:
+
+- **Wraparound** — If this option is set, the borders of the game level will
+  wrap around so that the snake can pass into one side and come out the
+  opposite.  When this is not set, the snake will die upon coming into contact
+  with a level border.
+
+- **Obstacles** — If this option is set, random obstacles will be placed in the
+  game level; coming into contact with one kills the snake.
+
+- **Fruits** — Set the number of fruits present at all times.  May be any
+  integer from 1 through 10.
+
+- **Level Size** — Set the dimensions of the game level, choosing from small
+  (38×8), medium (53×12), and large (76×19).
+
+### Key Bindings
+
+| Key                                          | Command                                                |
+| -------------------------------------------- | ------------------------------------------------------ |
+| <kbd>k</kbd>, <kbd>w</kbd>, <kbd>Up</kbd>    | Move up an item                                        |
+| <kbd>j</kbd>, <kbd>s</kbd>, <kbd>Down</kbd>  | Move down an item                                      |
+| <kbd>h</kbd>, <kbd>a</kbd>, <kbd>Left</kbd>  | Decrease or unset the current option                   |
+| <kbd>l</kbd>, <kbd>d</kbd>, <kbd>Right</kbd> | Increase or set the current option                     |
+| <kbd>Tab</kbd>                               | Move down an item, circling around at the bottom       |
+| <kbd>Shift</kbd>+<kbd>Tab</kbd>              | Move up an item, circling around at the top            |
+| <kbd>Home</kbd>                              | Jump to the first item in the menu                     |
+| <kbd>End</kbd>                               | Jump to the last item in the menu                      |
+| <kbd>Space</kbd>                             | Toggle the current option                              |
+| <kbd>Enter</kbd>                             | Toggle the current option or select the current button |
+| <kbd>p</kbd>                                 | Play a game of Snake                                   |
+| <kbd>q</kbd>                                 | Quit                                                   |
+
+Game
+----
+
+Upon selecting "Play" in the main menu, a game of Snake starts immediately with
+the configured options.  The snake advances one cell at a time at regular
+intervals; the directional keys can be used to change its direction of motion.
+The goal is to guide the snake to consume fruits (red dots) that randomly
+appear on the level; eating a fruit increases your score by 1 (displayed at the
+top of the screen) but also makes the snake longer, making it harder to avoid
+self-collisions.
+
+The game lasts until the snake's head collides with its body, the level border
+(if the wraparound option was not enabled), or an obstacle, all of which kill
+the snake.  When this happens, a message is displayed, and then pressing
+<kbd>Enter</kbd> will close the program.
