@@ -41,7 +41,7 @@ pub(crate) const COLLISION_STYLE: Style = Style::new()
 
 pub(crate) const MENU_SELECTION_STYLE: Style = Style::new().add_modifier(Modifier::UNDERLINED);
 
-pub(crate) const OBSTACLE_PROBABILITY: f64 = 0.031415926535;
+pub(crate) const OBSTACLE_PROBABILITY: f64 = 0.03;
 
 /// When creating a level with random obstacles, remove any obstacles behind
 /// the snake's head this many cells backwards.
