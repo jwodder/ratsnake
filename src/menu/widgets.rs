@@ -1,0 +1,150 @@
+use crate::consts;
+use ratatui::{
+    buffer::Buffer,
+    layout::{Offset, Rect},
+    text::Text,
+    widgets::Widget,
+};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) struct Logo;
+
+impl Logo {
+    const RAT_WIDTH: u16 = 15;
+    const SNAKE_WIDTH: u16 = 28;
+    pub(super) const HEIGHT: u16 = 5;
+    pub(super) const WIDTH: u16 = Self::RAT_WIDTH + Self::SNAKE_WIDTH;
+
+    #[rustfmt::skip]
+    const RAT: [&'static str; Self::HEIGHT as usize] = [
+         " ____       _  ",
+        r"|  _ \ __ _| |_",
+         "| |_) / _` | __",
+         "|  _ < (_| | |_",
+        r"|_| \_\__,_|\__",
+    ];
+
+    #[rustfmt::skip]
+    const SNAKE: [&'static str; Self::HEIGHT as usize] = [
+         " ____              _        ",
+         "/ ___| _ __   __ _| | _____ ",
+        r"\___ \| '_ \ / _` | |/ / _ \",
+         " ___) | | | | (_| |   <  __/",
+        r"|____/|_| |_|\__,_|_|\_\___|",
+    ];
+}
+
+impl Widget for Logo {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let rat_text = Text::from_iter(Self::RAT).style(consts::FRUIT_STYLE);
+        rat_text.render(area, buf);
+        let snake_text = Text::from_iter(Self::SNAKE).style(consts::SNAKE_STYLE);
+        let snake_area = area
+            .offset(Offset {
+                x: Self::RAT_WIDTH.into(),
+                y: 0,
+            })
+            .intersection(area);
+        snake_text.render(snake_area, buf);
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) struct Instructions;
+
+impl Instructions {
+    pub(super) const HEIGHT: u16 = 6;
+    pub(super) const WIDTH: u16 = 20;
+
+    const TEXT: [&'static str; Self::HEIGHT as usize] = [
+        "Move the snake with:",
+        "       ← ↓ ↑ →",
+        "   or: h j k l",
+        "   or: a s w d",
+        "Eat the fruit, but",
+        "don't hit yourself!",
+    ];
+}
+
+impl Widget for Instructions {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        Text::from_iter(Self::TEXT).render(area, buf);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod logo {
+        use super::*;
+
+        #[test]
+        fn test_render() {
+            let mut buffer = Buffer::empty(Rect::new(0, 0, 50, 10));
+            Logo.render(Rect::new(3, 2, 50, 10), &mut buffer);
+            let mut expected = Buffer::with_lines([
+                "",
+                "",
+                "    ____       _   ____              _            ",
+                "   |  _ \\ __ _| |_/ ___| _ __   __ _| | _____     ",
+                "   | |_) / _` | __\\___ \\| '_ \\ / _` | |/ / _ \\    ",
+                "   |  _ < (_| | |_ ___) | | | | (_| |   <  __/    ",
+                "   |_| \\_\\__,_|\\__|____/|_| |_|\\__,_|_|\\_\\___|    ",
+                "",
+                "",
+                "",
+            ]);
+            expected.set_style(Rect::new(3, 2, 15, 8), consts::FRUIT_STYLE);
+            expected.set_style(Rect::new(18, 2, 32, 8), consts::SNAKE_STYLE);
+            pretty_assertions::assert_eq!(buffer, expected);
+        }
+
+        #[test]
+        fn test_render_too_small() {
+            let mut buffer = Buffer::empty(Rect::new(0, 0, 50, 10));
+            Logo.render(Rect::new(3, 2, 40, 3), &mut buffer);
+            let mut expected = Buffer::with_lines([
+                "",
+                "",
+                "    ____       _   ____              _            ",
+                "   |  _ \\ __ _| |_/ ___| _ __   __ _| | ___       ",
+                "   | |_) / _` | __\\___ \\| '_ \\ / _` | |/ /        ",
+                "",
+                "",
+                "",
+                "",
+                "",
+            ]);
+            expected.set_style(Rect::new(3, 2, 15, 3), consts::FRUIT_STYLE);
+            expected.set_style(Rect::new(18, 2, 25, 3), consts::SNAKE_STYLE);
+            pretty_assertions::assert_eq!(buffer, expected);
+        }
+
+        #[test]
+        fn rat_width() {
+            assert!(Logo::RAT
+                .iter()
+                .all(|ln| ln.len() == usize::from(Logo::RAT_WIDTH)));
+        }
+
+        #[test]
+        fn snake_width() {
+            assert!(Logo::SNAKE
+                .iter()
+                .all(|ln| ln.len() == usize::from(Logo::SNAKE_WIDTH)));
+        }
+    }
+
+    #[test]
+    fn instructions_width() {
+        assert_eq!(
+            Instructions::TEXT
+                .iter()
+                .map(|ln| ln.chars().count())
+                .max()
+                .unwrap(),
+            usize::from(Instructions::WIDTH)
+        );
+    }
+}

@@ -1,8 +1,9 @@
+mod widgets;
+use self::widgets::{Instructions, Logo};
 use crate::app::AppState;
 use crate::command::Command;
 use crate::consts;
 use crate::game::Game;
-use crate::logo::Logo;
 use crate::options::{Adjustable, OptValue, Options};
 use crate::util::get_display_area;
 use crossterm::event::{read, Event};
@@ -10,7 +11,7 @@ use ratatui::{
     buffer::Buffer,
     layout::{Flex, Layout, Rect},
     style::Style,
-    text::{Line, Span, Text},
+    text::{Line, Span},
     widgets::{
         block::{Block, Padding},
         Widget,
@@ -101,36 +102,30 @@ impl MainMenu {
     }
 }
 
-const INSTRUCTIONS_WIDTH: u16 = 20;
-const INSTRUCTIONS_HEIGHT: u16 = 6;
-
-const INSTRUCTIONS: [&str; INSTRUCTIONS_HEIGHT as usize] = [
-    "Move the snake with:",
-    "       ← ↓ ↑ →",
-    "   or: h j k l",
-    "   or: a s w d",
-    "Eat the fruit, but",
-    "don't hit yourself!",
-];
-
 impl Widget for &MainMenu {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let display = get_display_area(area);
         let [logo_area, instructions_area, play_area, options_area, quit_area] =
-            Layout::vertical([Logo::HEIGHT, INSTRUCTIONS_HEIGHT, 1, OptionsMenu::HEIGHT, 1])
-                .flex(Flex::Start)
-                .spacing(1)
-                .areas(display);
+            Layout::vertical([
+                Logo::HEIGHT,
+                Instructions::HEIGHT,
+                1,
+                OptionsMenu::HEIGHT,
+                1,
+            ])
+            .flex(Flex::Start)
+            .spacing(1)
+            .areas(display);
 
         let [logo_area] = Layout::horizontal([Logo::WIDTH])
             .flex(Flex::Center)
             .areas(logo_area);
         Logo.render(logo_area, buf);
 
-        let [instructions_area] = Layout::horizontal([INSTRUCTIONS_WIDTH])
+        let [instructions_area] = Layout::horizontal([Instructions::WIDTH])
             .flex(Flex::Center)
             .areas(instructions_area);
-        Text::from_iter(INSTRUCTIONS).render(instructions_area, buf);
+        Instructions.render(instructions_area, buf);
 
         let play_style = if self.selection == Selection::PlayButton {
             consts::MENU_SELECTION_STYLE
@@ -571,7 +566,7 @@ mod tests {
         fn label_width() {
             let actual_width = OptionsMenu::OPTION_LABELS
                 .iter()
-                .map(|lbl| lbl.len())
+                .map(|lbl| lbl.chars().count())
                 .max()
                 .unwrap();
             assert_eq!(actual_width, usize::from(OptionsMenu::LABEL_WIDTH));
