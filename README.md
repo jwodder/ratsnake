@@ -89,6 +89,12 @@ appear on the level; eating a fruit increases your score by 1 (displayed at the
 top of the screen) but also makes the snake longer, making it harder to avoid
 self-collisions.
 
+Pressing <kbd>Escape</kbd> or defocusing the terminal during play will pause
+the game.  While paused, a pop-up menu is displayed, giving you the choice of
+resuming/unpausing, restarting the game using the same options (though
+obstacles will be re-randomized), returning to the main menu, or quitting the
+program.
+
 The game lasts until the snake's head collides with its body, the level border
 (if the wraparound option was not enabled), or an obstacle, all of which kill
 the snake.  When this happens, a message is displayed, and then pressing
