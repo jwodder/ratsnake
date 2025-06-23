@@ -15,6 +15,7 @@ use std::borrow::Cow;
 pub(crate) struct Warning {
     lines: Vec<String>,
     scroll_offset: usize,
+    max_scroll: usize,
 }
 
 impl Warning {
@@ -32,7 +33,7 @@ impl Warning {
                 }
             }
             (Command::Down, true) => {
-                if self.scroll_offset < self.lines.len().saturating_sub(1) {
+                if self.scroll_offset < self.max_scroll.saturating_sub(1) {
                     self.scroll_offset += 1;
                 }
             }
@@ -50,6 +51,7 @@ impl Warning {
             return Warning {
                 lines: vec![String::from("You should never see this.")],
                 scroll_offset: 0,
+                max_scroll: 0,
             };
         }
         let mut lines = Vec::new();
@@ -83,9 +85,13 @@ impl Warning {
                 );
             }
         }
+        let max_scroll = lines
+            .len()
+            .saturating_sub(usize::from(Warning::MAX_LINES) - 1);
         Warning {
             lines,
             scroll_offset: 0,
+            max_scroll,
         }
     }
 }
@@ -150,7 +156,7 @@ impl Widget for &Warning {
             let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
                 .track_symbol(Some(ratatui::symbols::shade::MEDIUM));
             let mut scroll_state =
-                ScrollbarState::new(self.lines.len()).position(self.scroll_offset);
+                ScrollbarState::new(self.max_scroll).position(self.scroll_offset);
             scrollbar.render(scrollbar_area, buf, &mut scroll_state);
         } else {
             Text::from_iter(self.lines.iter().map(String::as_str)).render(text_area, buf);
@@ -394,10 +400,10 @@ mod tests {
             "             │     1: All mimsy were the borogoves,             █ │             ",
             "             │     2: And the mome raths outgrabe.              █ │             ",
             "             │     3: Beware the Jabberwock, my son!            █ │             ",
-            "             │     4: The jaws that bite, the claws that catch! ▒ │             ",
-            "             │     5: Beware the Jubjub bird, and shun          ▒ │             ",
-            "             │     6: The frumious Bandersnatch!                ▒ │             ",
-            "             │     7: He took his vorpal sword in hand:         ▒ │             ",
+            "             │     4: The jaws that bite, the claws that catch! █ │             ",
+            "             │     5: Beware the Jubjub bird, and shun          █ │             ",
+            "             │     6: The frumious Bandersnatch!                █ │             ",
+            "             │     7: He took his vorpal sword in hand:         █ │             ",
             "             │     8: Long time the manxome foe he sought--     ▒ │             ",
             "             │     9: So rested he by the Tumtum tree,          ▒ │             ",
             "             │    10: And stood awhile in thought.              ▒ │             ",
