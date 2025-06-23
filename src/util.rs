@@ -3,6 +3,7 @@ use enum_map::Enum;
 use ratatui::layout::{Flex, Layout, Rect};
 
 pub(crate) trait EnumExt: Enum {
+    fn iter() -> impl Iterator<Item = Self>;
     fn next(self) -> Option<Self>;
     fn prev(self) -> Option<Self>;
     fn min() -> Self;
@@ -10,6 +11,10 @@ pub(crate) trait EnumExt: Enum {
 }
 
 impl<T: Enum> EnumExt for T {
+    fn iter() -> impl Iterator<Item = Self> {
+        (0..Self::LENGTH).map(Self::from_usize)
+    }
+
     fn next(self) -> Option<Self> {
         self.into_usize()
             .checked_add(1)

@@ -59,10 +59,6 @@ pub(crate) enum OptKey {
 impl OptKey {
     pub(crate) const DISPLAY_WIDTH: u16 = 10;
 
-    pub(crate) fn iter() -> impl Iterator<Item = OptKey> {
-        (0..Self::LENGTH).map(Self::from_usize)
-    }
-
     pub(crate) fn as_str(&self) -> &'static str {
         match self {
             OptKey::Wraparound => "Wraparound",
@@ -281,6 +277,7 @@ mod tests {
 
     mod opt_key {
         use super::*;
+        use crate::util::EnumExt;
 
         #[test]
         fn display_width() {
