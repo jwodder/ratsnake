@@ -24,15 +24,15 @@ pub(crate) const SNAKE_HEAD_SOUTH_SYMBOL: char = '^';
 pub(crate) const SNAKE_HEAD_EAST_SYMBOL: char = '<';
 pub(crate) const SNAKE_HEAD_WEST_SYMBOL: char = '>';
 
-pub(crate) const SNAKE_BODY_SYMBOL: char = '·';
+pub(crate) const SNAKE_BODY_SYMBOL: char = '⚬';
 
-pub(crate) const FRUIT_SYMBOL: char = '\u{25CF}';
+pub(crate) const FRUIT_SYMBOL: char = '●';
 
-pub(crate) const OBSTACLE_SYMBOL: char = '\u{2588}';
+pub(crate) const OBSTACLE_SYMBOL: char = '█';
 
-pub(crate) const COLLISION_SYMBOL: char = '*';
+pub(crate) const COLLISION_SYMBOL: char = '×';
 
-pub(crate) const SNAKE_STYLE: Style = Style::new().fg(Color::LightGreen);
+pub(crate) const SNAKE_STYLE: Style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
 
 pub(crate) const FRUIT_STYLE: Style = Style::new().fg(Color::LightRed);
 
