@@ -1,6 +1,6 @@
 use crate::consts;
 use enum_map::Enum;
-use ratatui::layout::{Flex, Layout, Rect};
+use ratatui::layout::{Flex, Layout, Rect, Size};
 
 pub(crate) trait EnumExt: Enum {
     fn iter() -> impl Iterator<Item = Self>;
@@ -35,12 +35,18 @@ impl<T: Enum> EnumExt for T {
     }
 }
 
+/// Produce a `Rect` of the given size that is centered both vertically &
+/// horizontally within `area`
+pub(crate) fn center_rect(area: Rect, size: Size) -> Rect {
+    let [inner] = Layout::horizontal([size.width])
+        .flex(Flex::Center)
+        .areas(area);
+    let [inner] = Layout::vertical([size.height])
+        .flex(Flex::Center)
+        .areas(inner);
+    inner
+}
+
 pub(crate) fn get_display_area(buffer_area: Rect) -> Rect {
-    let [display] = Layout::horizontal([consts::DISPLAY_SIZE.width])
-        .flex(Flex::Center)
-        .areas(buffer_area);
-    let [display] = Layout::vertical([consts::DISPLAY_SIZE.height])
-        .flex(Flex::Center)
-        .areas(display);
-    display
+    center_rect(buffer_area, consts::DISPLAY_SIZE)
 }

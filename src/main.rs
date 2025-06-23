@@ -6,41 +6,71 @@ mod menu;
 mod options;
 mod util;
 use crate::app::App;
-use std::io::{ErrorKind, Write};
+use crossterm::{
+    event::{DisableFocusChange, EnableFocusChange},
+    execute,
+};
+use std::io::{self, ErrorKind, Write};
 use std::process::ExitCode;
+use thiserror::Error;
 
-macro_rules! error {
-    ($($arg:tt)*) => {
-        {
-            let mut stderr = std::io::stderr().lock();
-            if let Err(err) = writeln!(stderr, "ratsnake: {}", format_args!($($arg)*)) {
-                if err.kind() == ErrorKind::BrokenPipe {
-                    return ExitCode::SUCCESS;
-                } else {
-                    return ExitCode::from(2);
-                }
-            }
+fn main() -> ExitCode {
+    let terminal = match init_terminal() {
+        Ok(term) => term,
+        Err(e) => {
+            return e.report();
+        }
+    };
+    let r = App::new().run(terminal).map_err(MainError::App);
+    let code = if let Err(e) = restore_terminal() {
+        e.report()
+    } else {
+        ExitCode::SUCCESS
+    };
+    match r {
+        Ok(()) => code,
+        Err(e) => e.report(),
+    }
+}
+
+fn init_terminal() -> Result<ratatui::DefaultTerminal, MainError> {
+    let terminal = ratatui::try_init().map_err(MainError::Init)?;
+    match execute!(io::stdout(), EnableFocusChange) {
+        Ok(()) => Ok(terminal),
+        Err(e) => {
+            ratatui::restore();
+            Err(MainError::Init(e))
         }
     }
 }
 
-fn main() -> ExitCode {
-    let terminal = match ratatui::try_init() {
-        Ok(term) => term,
-        Err(e) => {
-            error!("failed to set up terminal: {e}");
-            return ExitCode::from(2);
-        }
-    };
-    let r = App::new().run(terminal);
-    if let Err(e) = ratatui::try_restore() {
-        error!("failed to clean up terminal: {e}");
-    }
-    match r {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(e) if e.kind() == ErrorKind::BrokenPipe => ExitCode::SUCCESS,
-        Err(e) => {
-            error!("{e}");
+fn restore_terminal() -> Result<(), MainError> {
+    execute!(io::stdout(), DisableFocusChange)
+        .and(ratatui::try_restore())
+        .map_err(MainError::Restore)
+}
+
+#[derive(Debug, Error)]
+enum MainError {
+    #[error("failed to set up terminal: {0}")]
+    Init(io::Error),
+    #[error(transparent)]
+    App(io::Error),
+    #[error("failed to clean up terminal: {0}")]
+    Restore(io::Error),
+}
+
+impl MainError {
+    fn report(&self) -> ExitCode {
+        if matches!(self, MainError::App(e) if e.kind() == ErrorKind::BrokenPipe) {
+            ExitCode::SUCCESS
+        } else {
+            let mut stderr = io::stderr().lock();
+            if let Err(err) = writeln!(stderr, "ratsnake: {self}") {
+                if err.kind() == ErrorKind::BrokenPipe {
+                    return ExitCode::SUCCESS;
+                }
+            }
             ExitCode::from(2)
         }
     }
