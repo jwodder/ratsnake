@@ -3,7 +3,7 @@ use enum_map::Enum;
 use ratatui::layout::{Flex, Layout, Rect, Size};
 
 pub(crate) trait EnumExt: Enum {
-    fn iter() -> impl Iterator<Item = Self>;
+    fn iter() -> EnumExtIter<Self>;
     fn next(self) -> Option<Self>;
     fn prev(self) -> Option<Self>;
     fn min() -> Self;
@@ -11,8 +11,8 @@ pub(crate) trait EnumExt: Enum {
 }
 
 impl<T: Enum> EnumExt for T {
-    fn iter() -> impl Iterator<Item = Self> {
-        (0..Self::LENGTH).map(Self::from_usize)
+    fn iter() -> EnumExtIter<T> {
+        EnumExtIter::new()
     }
 
     fn next(self) -> Option<Self> {
@@ -34,6 +34,43 @@ impl<T: Enum> EnumExt for T {
         Self::from_usize(Self::LENGTH - 1)
     }
 }
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct EnumExtIter<T> {
+    inner: std::ops::Range<usize>,
+    _marker: std::marker::PhantomData<T>,
+}
+
+impl<T: Enum> EnumExtIter<T> {
+    fn new() -> Self {
+        EnumExtIter {
+            inner: 0..T::LENGTH,
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T: Enum> Iterator for EnumExtIter<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        self.inner.next().map(T::from_usize)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+impl<T: Enum> DoubleEndedIterator for EnumExtIter<T> {
+    fn next_back(&mut self) -> Option<T> {
+        self.inner.next_back().map(T::from_usize)
+    }
+}
+
+impl<T: Enum> ExactSizeIterator for EnumExtIter<T> {}
+
+impl<T: Enum> std::iter::FusedIterator for EnumExtIter<T> {}
 
 /// Produce a `Rect` of the given size that is centered both vertically &
 /// horizontally within `area`
