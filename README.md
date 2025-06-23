@@ -31,7 +31,7 @@ currently does not recognize any command-line options.
 terminal is bigger than this, the interface will be centered in the middle.  If
 your terminal is smaller, you're going to have a bad time.
 
-All screens in `ratsnake` support movement with the arrow keys,
+All screens in `ratsnake` support directional movement with the arrow keys,
 <kbd>h</kbd>/<kbd>j</kbd>/<kbd>k</kbd>/<kbd>l</kbd>, and
 <kbd>w</kbd>/<kbd>a</kbd>/<kbd>s</kbd>/<kbd>d</kbd>.  In addition, pressing
 <kbd>Ctrl</kbd>+<kbd>C</kbd> at any point during program execution will
