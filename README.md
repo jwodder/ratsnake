@@ -102,3 +102,10 @@ to fill the level with the snake.)  When the game ends, a message is displayed,
 and you can choose to start a new game with the same options (by pressing
 <kbd>r</kbd>), return to the main menu (by pressing <kbd>m</kbd>), or quit the
 program (by pressing <kbd>q</kbd>).
+
+Acknowledgements
+================
+
+Much of `ratsnake`'s functionality was inspired by
+[`nsnake`](https://github.com/alexdantas/nSnake) by Alexandre Dantas (no longer
+maintained).
