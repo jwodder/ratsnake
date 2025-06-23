@@ -42,6 +42,8 @@ pub(crate) const COLLISION_STYLE: Style = Style::new()
     .fg(Color::LightRed)
     .add_modifier(Modifier::REVERSED);
 
+pub(crate) const KEY_STYLE: Style = Style::new().fg(Color::Yellow);
+
 pub(crate) const SCORE_BAR_STYLE: Style = Style::new().add_modifier(Modifier::REVERSED);
 
 pub(crate) const MENU_SELECTION_STYLE: Style = Style::new().add_modifier(Modifier::UNDERLINED);
