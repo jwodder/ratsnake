@@ -97,5 +97,8 @@ program.
 
 The game lasts until the snake's head collides with its body, the level border
 (if the wraparound option was not enabled), or an obstacle, all of which kill
-the snake.  When this happens, a message is displayed, and then pressing
-<kbd>Enter</kbd> will close the program.
+the snake.  (If you're very skilled, you may also get a game over if you manage
+to fill the level with the snake.)  When the game ends, a message is displayed,
+and you can choose to start a new game with the same options (by pressing
+<kbd>r</kbd>), return to the main menu (by pressing <kbd>m</kbd>), or quit the
+program (by pressing <kbd>q</kbd>).

@@ -91,7 +91,7 @@ impl<R: Rng> Game<R> {
             return;
         }
         if !self.snake.advance(self.map.bounds()) {
-            self.state = GameState::Dead;
+            self.state = GameState::GameOver;
             return;
         }
         if self.fruits.remove(&self.snake.head()) {
@@ -101,10 +101,10 @@ impl<R: Rng> Game<R> {
         } else if self.snake.body().contains(&self.snake.head())
             || self.map.obstacles().contains(&self.snake.head())
         {
-            self.state = GameState::Dead;
+            self.state = GameState::GameOver;
         }
         if self.fruits.is_empty() {
-            self.state = GameState::Exhausted;
+            self.state = GameState::GameOver;
         }
     }
 
@@ -152,14 +152,14 @@ impl<R> Game<R> {
                 }
                 PauseOpt::Quit => return Some(AppState::Quit),
             },
-            GameState::Dead | GameState::Exhausted => {
-                if matches!(
-                    Command::from_key_event(event.as_key_press_event()?),
-                    Some(Command::Quit | Command::Enter)
-                ) {
-                    return Some(AppState::Quit);
+            GameState::GameOver => match Command::from_key_event(event.as_key_press_event()?)? {
+                Command::R => return Some(AppState::Game(Game::new(self.options))),
+                Command::M => {
+                    return Some(AppState::Main(crate::menu::MainMenu::new(self.options)))
                 }
-            }
+                Command::Quit | Command::Q => return Some(AppState::Quit),
+                _ => (),
+            },
         }
         None
     }
@@ -212,7 +212,7 @@ impl<R> Widget for &Game<R> {
         }
         // Draw the head last so that, if it's a collision, we overwrite
         // whatever it's colliding with
-        if self.state == GameState::Dead {
+        if self.state == GameState::GameOver {
             level.draw_cell(
                 self.snake.head(),
                 consts::COLLISION_SYMBOL,
@@ -238,13 +238,18 @@ impl<R> Widget for &Game<R> {
                 );
                 paused.render(pause_area, buf);
             }
-            GameState::Dead => {
-                Span::from(" Oh dear, you are dead!").render(msg1_area, buf);
-                Span::from(" Press ENTER to exit.").render(msg2_area, buf);
-            }
-            GameState::Exhausted => {
-                Span::from(" You have eaten all you can eat!").render(msg1_area, buf);
-                Span::from(" Press ENTER to exit.").render(msg2_area, buf);
+            GameState::GameOver => {
+                Span::from(" — GAME OVER —").render(msg1_area, buf);
+                Line::from_iter([
+                    Span::raw(" Choose One: Restart ("),
+                    Span::styled("r", consts::KEY_STYLE),
+                    Span::raw(") — Main Menu ("),
+                    Span::styled("m", consts::KEY_STYLE),
+                    Span::raw(") — Quit ("),
+                    Span::styled("q", consts::KEY_STYLE),
+                    Span::raw(")"),
+                ])
+                .render(msg2_area, buf);
             }
         }
     }
@@ -314,10 +319,7 @@ impl Widget for DottedBorder {
 enum GameState {
     Running,
     Paused(Paused),
-    Dead,
-    /// The snake has filled the board and there are no more spaces to place
-    /// fruits in.
-    Exhausted,
+    GameOver,
 }
 
 #[cfg(test)]
@@ -434,7 +436,7 @@ mod tests {
         ]);
         game.snake.max_len = 12;
         game.snake.direction = Direction::North;
-        game.state = GameState::Dead;
+        game.state = GameState::GameOver;
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
         game.render(area, &mut buffer);
@@ -461,8 +463,8 @@ mod tests {
             " │                                                                            │ ",
             " │                                                                            │ ",
             " └────────────────────────────────────────────────────────────────────────────┘ ",
-            " Oh dear, you are dead!",
-            " Press ENTER to exit.",
+            " — GAME OVER —",
+            " Choose One: Restart (r) — Main Menu (m) — Quit (q)",
         ]);
         expected.set_style(Rect::new(0, 0, 80, 1), consts::SCORE_BAR_STYLE);
         expected.set_style(Rect::new(32, 8, 1, 1), consts::COLLISION_STYLE);
@@ -478,6 +480,9 @@ mod tests {
         expected.set_style(Rect::new(32, 10, 1, 1), consts::SNAKE_STYLE);
         expected.set_style(Rect::new(32, 9, 1, 1), consts::SNAKE_STYLE);
         expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
+        expected.set_style(Rect::new(22, 23, 1, 1), consts::KEY_STYLE);
+        expected.set_style(Rect::new(38, 23, 1, 1), consts::KEY_STYLE);
+        expected.set_style(Rect::new(49, 23, 1, 1), consts::KEY_STYLE);
         pretty_assertions::assert_eq!(buffer, expected);
     }
 
