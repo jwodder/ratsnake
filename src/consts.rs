@@ -19,9 +19,12 @@ pub(crate) const INITIAL_SNAKE_LENGTH: usize = 3;
 /// How many cells the snake's length should increase by upon eating a fruit
 pub(crate) const SNAKE_GROWTH: usize = 3;
 
-pub(crate) const SNAKE_HEAD_SYMBOL: char = '@';
+pub(crate) const SNAKE_HEAD_NORTH_SYMBOL: char = 'v';
+pub(crate) const SNAKE_HEAD_SOUTH_SYMBOL: char = '^';
+pub(crate) const SNAKE_HEAD_EAST_SYMBOL: char = '<';
+pub(crate) const SNAKE_HEAD_WEST_SYMBOL: char = '>';
 
-pub(crate) const SNAKE_BODY_SYMBOL: char = '~';
+pub(crate) const SNAKE_BODY_SYMBOL: char = '·';
 
 pub(crate) const FRUIT_SYMBOL: char = '\u{25CF}';
 

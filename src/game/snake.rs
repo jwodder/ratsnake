@@ -26,6 +26,15 @@ impl Snake {
         self.head
     }
 
+    pub(super) fn head_symbol(&self) -> char {
+        match self.direction {
+            Direction::North => consts::SNAKE_HEAD_NORTH_SYMBOL,
+            Direction::South => consts::SNAKE_HEAD_SOUTH_SYMBOL,
+            Direction::East => consts::SNAKE_HEAD_EAST_SYMBOL,
+            Direction::West => consts::SNAKE_HEAD_WEST_SYMBOL,
+        }
+    }
+
     pub(super) fn body(&self) -> &VecDeque<Position> {
         &self.body
     }
