@@ -10,7 +10,11 @@ pub(crate) struct App {
 
 impl App {
     pub(crate) fn new() -> App {
-        let state = AppState::Main(MainMenu::new(Options::default()));
+        let menu = match Options::load() {
+            Ok(opts) => MainMenu::new(opts),
+            Err(e) => MainMenu::from_load_error(e),
+        };
+        let state = AppState::Main(menu);
         App { state }
     }
 

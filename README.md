@@ -59,6 +59,15 @@ Snake before starting a game.  The following options can be set:
 - **Level Size** — Set the dimensions of the game level, choosing from small
   (38×8), medium (53×12), and large (76×19).
 
+The option configuration is saved to a file before starting a new game and is
+loaded back in on program startup.  The location of this file depends on your
+OS:
+
+- Linux — `~/.local/share/ratsnake/options.json` or
+  `$XDG_DATA_HOME/ratsnake/options.json`
+- macOS — `~/Library/Application Support/ratsnake/options.json`
+- Windows — `%USERPROFILE%\AppData\Local\ratsnake\options.json`
+
 ### Key Bindings
 
 | Key                                          | Command                                                |
