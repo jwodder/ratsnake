@@ -4,9 +4,10 @@ use crate::app::AppState;
 use crate::command::Command;
 use crate::consts;
 use crate::game::Game;
-use crate::options::{Adjustable, OptValue, Options};
+use crate::options::{Adjustable, OptKey, OptValue, Options};
 use crate::util::get_display_area;
 use crossterm::event::{read, Event};
+use enum_map::{Enum, EnumMap};
 use ratatui::{
     buffer::Buffer,
     layout::{Flex, Layout, Rect},
@@ -90,9 +91,9 @@ impl MainMenu {
         if selection == Selection::Options {
             if let Some(first) = first_option {
                 self.options.selection = if first {
-                    Some(0)
+                    Some(OptKey::MIN)
                 } else {
-                    Some(OptionsMenu::OPTION_QTY - 1)
+                    Some(OptKey::MAX)
                 };
             } else {
                 self.options.selection = None;
@@ -170,31 +171,22 @@ enum Selection {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct OptionsMenu {
     /// If the currently-selected main menu item is an element of this menu,
-    /// then `selection` is `Some(i)`, where `i` is the index of the selected
+    /// then `selection` is `Some(key)`, where `key` is the key of the selected
     /// item within the `OptionsMenu`.
-    selection: Option<usize>,
-    settings: [OptValue; Self::OPTION_QTY],
+    selection: Option<OptKey>,
+    settings: EnumMap<OptKey, OptValue>,
 }
 
 impl OptionsMenu {
-    const OPTION_QTY: usize = 4;
-    const HEIGHT: u16 = 6; // OPTION_QTY + 2 (for the border)
-    const OPTION_LABELS: [&'static str; Self::OPTION_QTY] =
-        ["Wraparound", "Obstacles", "Fruits", "Level Size"];
+    #[allow(clippy::cast_possible_truncation)]
+    const HEIGHT: u16 = (OptKey::LENGTH as u16) + 2 /* for border */;
     const HORIZONTAL_PADDING: u16 = 1; // padding on each side
     const POINTER_WIDTH: u16 = 2;
-    const LABEL_WIDTH: u16 = 10;
     const LABEL_VALUE_GUTTER: u16 = 2;
-    const VALUE_WIDTH: u16 = 10;
-    const WIDTH: u16 = 2 /* for border */ + 2 * Self::HORIZONTAL_PADDING + Self::POINTER_WIDTH + Self::LABEL_WIDTH + Self::LABEL_VALUE_GUTTER + Self::VALUE_WIDTH;
+    const WIDTH: u16 = 2 /* for border */ + 2 * Self::HORIZONTAL_PADDING + Self::POINTER_WIDTH + OptKey::DISPLAY_WIDTH + Self::LABEL_VALUE_GUTTER + OptValue::DISPLAY_WIDTH;
 
     fn new(options: Options) -> Self {
-        let settings = [
-            OptValue::Bool(options.wraparound),
-            OptValue::Bool(options.obstacles),
-            OptValue::FruitQty(options.fruits),
-            OptValue::LevelSize(options.level_size),
-        ];
+        let settings = EnumMap::from_iter(OptKey::iter().map(|key| (key, options.get(key))));
         OptionsMenu {
             selection: None,
             settings,
@@ -202,57 +194,21 @@ impl OptionsMenu {
     }
 
     fn to_options(&self) -> Options {
-        let OptValue::Bool(wraparound) = self.settings[0] else {
-            panic!(
-                "OptionsMenu.settings[0] should be a Bool; got {:?}",
-                self.settings[0]
-            );
-        };
-        let OptValue::Bool(obstacles) = self.settings[1] else {
-            panic!(
-                "OptionsMenu.settings[1] should be a Bool; got {:?}",
-                self.settings[1]
-            );
-        };
-        let OptValue::FruitQty(fruits) = self.settings[2] else {
-            panic!(
-                "OptionsMenu.settings[2] should be a FruitQty; got {:?}",
-                self.settings[2]
-            );
-        };
-        let OptValue::LevelSize(level_size) = self.settings[3] else {
-            panic!(
-                "OptionsMenu.settings[3] should be a LevelSize; got {:?}",
-                self.settings[3]
-            );
-        };
-        Options {
-            wraparound,
-            obstacles,
-            fruits,
-            level_size,
+        let mut opts = Options::default();
+        for key in OptKey::iter() {
+            opts.set(key, self.settings[key]);
         }
+        opts
     }
 
     fn move_up(&mut self) -> Option<Selection> {
-        if let Some(sel) = self.selection?.checked_sub(1) {
-            self.selection = Some(sel);
-            None
-        } else {
-            self.selection = None;
-            Some(Selection::PlayButton)
-        }
+        self.selection = self.selection?.prev();
+        self.selection.is_none().then_some(Selection::PlayButton)
     }
 
     fn move_down(&mut self) -> Option<Selection> {
-        let sel = self.selection? + 1;
-        if sel < Self::OPTION_QTY {
-            self.selection = Some(sel);
-            None
-        } else {
-            self.selection = None;
-            Some(Selection::QuitButton)
-        }
+        self.selection = self.selection?.next();
+        self.selection.is_none().then_some(Selection::QuitButton)
     }
 
     fn move_left(&mut self) {
@@ -281,22 +237,21 @@ impl Widget for &OptionsMenu {
             .padding(Padding::horizontal(OptionsMenu::HORIZONTAL_PADDING));
         let menu_area = block.inner(area);
         block.render(area, buf);
-        for (i, ((label, value), row)) in
-            std::iter::zip(OptionsMenu::OPTION_LABELS, self.settings.iter())
-                .zip(menu_area.rows())
-                .enumerate()
+        for ((key, value), row) in OptKey::iter()
+            .map(|key| (key, self.settings[key]))
+            .zip(menu_area.rows())
         {
-            let selected = Some(i) == self.selection;
+            let selected = Some(key) == self.selection;
             let style = if selected {
                 consts::MENU_SELECTION_STYLE
             } else {
                 Style::new()
             };
             let s = format!(
-                "{pointer:pwidth$}{label:lwidth$}{space:gutter$}{value}",
+                "{pointer:pwidth$}{key:lwidth$}{space:gutter$}{value}",
                 pointer = if selected { "»" } else { "" },
                 pwidth = usize::from(OptionsMenu::POINTER_WIDTH),
-                lwidth = usize::from(OptionsMenu::LABEL_WIDTH),
+                lwidth = usize::from(OptKey::DISPLAY_WIDTH),
                 space = "",
                 gutter = usize::from(OptionsMenu::LABEL_VALUE_GUTTER),
             );
@@ -637,31 +592,21 @@ mod tests {
         fn tab_wraparound() {
             let mut menu = MainMenu::new(Options::default());
             assert_eq!(menu.options.selection, None);
-            for _ in 0..OptionsMenu::OPTION_QTY {
+            for _ in OptKey::iter() {
                 assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             }
-            assert_eq!(menu.options.selection, Some(OptionsMenu::OPTION_QTY - 1));
+            assert_eq!(menu.options.selection, Some(OptKey::MAX));
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             assert_eq!(menu.options.selection, None);
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
-            assert_eq!(menu.options.selection, Some(0));
+            assert_eq!(menu.options.selection, Some(OptKey::MIN));
         }
     }
 
     mod options_menu {
         use super::*;
         use crate::options::{FruitQty, LevelSize};
-
-        #[test]
-        fn label_width() {
-            let actual_width = OptionsMenu::OPTION_LABELS
-                .iter()
-                .map(|lbl| lbl.chars().count())
-                .max()
-                .unwrap();
-            assert_eq!(actual_width, usize::from(OptionsMenu::LABEL_WIDTH));
-        }
 
         #[test]
         fn roundtrip_defaults() {
