@@ -5,6 +5,7 @@ mod game;
 mod menu;
 mod options;
 mod util;
+mod warning;
 use crate::app::App;
 use crossterm::{
     event::{DisableFocusChange, EnableFocusChange},

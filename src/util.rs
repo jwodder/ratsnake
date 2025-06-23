@@ -1,6 +1,7 @@
 use crate::consts;
 use enum_map::Enum;
 use ratatui::layout::{Flex, Layout, Rect, Size};
+use std::path::PathBuf;
 
 pub(crate) trait EnumExt: Enum {
     fn iter() -> EnumExtIter<Self>;
@@ -86,4 +87,8 @@ pub(crate) fn center_rect(area: Rect, size: Size) -> Rect {
 
 pub(crate) fn get_display_area(buffer_area: Rect) -> Rect {
     center_rect(buffer_area, consts::DISPLAY_SIZE)
+}
+
+pub(crate) fn options_file_path() -> Option<PathBuf> {
+    dirs::data_local_dir().map(|p| p.join("ratsnake").join("options.json"))
 }

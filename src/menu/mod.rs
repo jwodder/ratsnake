@@ -4,8 +4,9 @@ use crate::app::AppState;
 use crate::command::Command;
 use crate::consts;
 use crate::game::Game;
-use crate::options::{Adjustable, OptKey, OptValue, Options};
+use crate::options::{Adjustable, LoadError, OptKey, OptValue, Options};
 use crate::util::{get_display_area, EnumExt};
+use crate::warning::{Warning, WarningOutcome};
 use crossterm::event::{read, Event};
 use enum_map::{Enum, EnumMap};
 use ratatui::{
@@ -24,6 +25,7 @@ use ratatui::{
 pub(crate) struct MainMenu {
     selection: Selection,
     options: OptionsMenu,
+    state: MenuState,
 }
 
 impl MainMenu {
@@ -31,6 +33,15 @@ impl MainMenu {
         MainMenu {
             selection: Selection::default(),
             options: OptionsMenu::new(options),
+            state: MenuState::Plain,
+        }
+    }
+
+    pub(crate) fn from_load_error(e: LoadError) -> Self {
+        MainMenu {
+            selection: Selection::default(),
+            options: OptionsMenu::new(Options::default()),
+            state: MenuState::LoadWarning(Warning::from(e)),
         }
     }
 
@@ -43,41 +54,54 @@ impl MainMenu {
     }
 
     fn handle_event(&mut self, event: Event) -> Option<AppState> {
-        match (
-            self.selection,
-            Command::from_key_event(event.as_key_press_event()?)?,
-        ) {
-            (_, Command::Quit) => return Some(AppState::Quit),
-            (_, Command::Home) => self.select(Selection::PlayButton, None),
-            (_, Command::End) => self.select(Selection::QuitButton, None),
-            (Selection::PlayButton, Command::Enter) | (_, Command::P) => {
-                return Some(AppState::Game(self.play()))
-            }
-            (Selection::PlayButton, Command::Prev) => self.select(Selection::QuitButton, None),
-            (Selection::PlayButton, Command::Down | Command::Next) => {
-                self.select(Selection::Options, Some(true));
-            }
-            (Selection::Options, Command::Up | Command::Prev) => {
-                if let Some(sel) = self.options.move_up() {
-                    self.select(sel, None);
+        let cmd = Command::from_key_event(event.as_key_press_event()?)?;
+        if cmd == Command::Quit {
+            return Some(AppState::Quit);
+        }
+        match self.state {
+            MenuState::Plain => match (self.selection, cmd) {
+                (_, Command::Home) => self.select(Selection::PlayButton, None),
+                (_, Command::End) => self.select(Selection::QuitButton, None),
+                (Selection::PlayButton, Command::Enter) | (_, Command::P) => {
+                    match self.options.to_options().save() {
+                        Ok(()) => return Some(AppState::Game(self.play())),
+                        Err(e) => self.state = MenuState::SaveWarning(Warning::from(e)),
+                    }
                 }
-            }
-            (Selection::Options, Command::Down | Command::Next) => {
-                if let Some(sel) = self.options.move_down() {
-                    self.select(sel, None);
+                (Selection::PlayButton, Command::Prev) => self.select(Selection::QuitButton, None),
+                (Selection::PlayButton, Command::Down | Command::Next) => {
+                    self.select(Selection::Options, Some(true));
                 }
-            }
-            (Selection::Options, Command::Left) => self.options.move_left(),
-            (Selection::Options, Command::Right) => self.options.move_right(),
-            (Selection::Options, Command::Space | Command::Enter) => self.options.toggle(),
-            (Selection::QuitButton, Command::Enter) | (_, Command::Q) => {
-                return Some(AppState::Quit);
-            }
-            (Selection::QuitButton, Command::Next) => self.select(Selection::PlayButton, None),
-            (Selection::QuitButton, Command::Up | Command::Prev) => {
-                self.select(Selection::Options, Some(false));
-            }
-            _ => (),
+                (Selection::Options, Command::Up | Command::Prev) => {
+                    if let Some(sel) = self.options.move_up() {
+                        self.select(sel, None);
+                    }
+                }
+                (Selection::Options, Command::Down | Command::Next) => {
+                    if let Some(sel) = self.options.move_down() {
+                        self.select(sel, None);
+                    }
+                }
+                (Selection::Options, Command::Left) => self.options.move_left(),
+                (Selection::Options, Command::Right) => self.options.move_right(),
+                (Selection::Options, Command::Space | Command::Enter) => self.options.toggle(),
+                (Selection::QuitButton, Command::Enter) | (_, Command::Q) => {
+                    return Some(AppState::Quit);
+                }
+                (Selection::QuitButton, Command::Next) => self.select(Selection::PlayButton, None),
+                (Selection::QuitButton, Command::Up | Command::Prev) => {
+                    self.select(Selection::Options, Some(false));
+                }
+                _ => (),
+            },
+            MenuState::LoadWarning(ref mut warning) => match warning.handle_command(cmd)? {
+                WarningOutcome::Dismissed => self.state = MenuState::Plain,
+                WarningOutcome::Quit => return Some(AppState::Quit),
+            },
+            MenuState::SaveWarning(ref mut warning) => match warning.handle_command(cmd)? {
+                WarningOutcome::Dismissed => return Some(AppState::Game(self.play())),
+                WarningOutcome::Quit => return Some(AppState::Quit),
+            },
         }
         None
     }
@@ -157,7 +181,18 @@ impl Widget for &MainMenu {
         ])
         .centered()
         .render(quit_area, buf);
+
+        if let MenuState::LoadWarning(warning) | MenuState::SaveWarning(warning) = &self.state {
+            warning.render(display, buf);
+        }
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum MenuState {
+    Plain,
+    LoadWarning(Warning),
+    SaveWarning(Warning),
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]

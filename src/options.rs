@@ -1,10 +1,17 @@
 use crate::consts;
+use crate::util::options_file_path;
 use enum_dispatch::enum_dispatch;
 use enum_map::Enum;
 use ratatui::layout::Size;
+use serde::{
+    de::{Deserializer, Unexpected},
+    ser::Serializer,
+    Deserialize, Serialize,
+};
 use std::fmt;
+use thiserror::Error;
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct Options {
     pub(crate) wraparound: bool,
     pub(crate) obstacles: bool,
@@ -13,6 +20,27 @@ pub(crate) struct Options {
 }
 
 impl Options {
+    pub(crate) fn save(&self) -> Result<(), SaveError> {
+        let path = options_file_path().ok_or_else(SaveError::no_path)?;
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            fs_err::create_dir_all(parent).map_err(SaveError::mkdir)?;
+        }
+        let mut src = serde_json::to_string(self).map_err(SaveError::serialize)?;
+        src.push('\n');
+        fs_err::write(&path, &src).map_err(SaveError::write)?;
+        Ok(())
+    }
+
+    pub(crate) fn load() -> Result<Options, LoadError> {
+        let path = options_file_path().ok_or_else(LoadError::no_path)?;
+        let src = match fs_err::read(&path) {
+            Ok(src) => src,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Options::default()),
+            Err(e) => return Err(LoadError::read(e)),
+        };
+        serde_json::from_slice(&src).map_err(LoadError::deserialize)
+    }
+
     pub(crate) fn get(&self, key: OptKey) -> OptValue {
         match key {
             OptKey::Wraparound => self.wraparound.into(),
@@ -46,6 +74,68 @@ impl Options {
             }
         }
     }
+}
+
+#[derive(Debug, Error)]
+#[error("Failed to save options to disk")]
+pub(crate) struct SaveError(#[source] SaveErrorSource);
+
+impl SaveError {
+    fn no_path() -> Self {
+        SaveError(SaveErrorSource::NoPath)
+    }
+
+    fn mkdir(e: std::io::Error) -> Self {
+        SaveError(SaveErrorSource::Mkdir(e))
+    }
+
+    fn serialize(e: serde_json::Error) -> Self {
+        SaveError(SaveErrorSource::Serialize(e))
+    }
+
+    fn write(e: std::io::Error) -> Self {
+        SaveError(SaveErrorSource::Write(e))
+    }
+}
+
+#[derive(Debug, Error)]
+enum SaveErrorSource {
+    #[error("failed to determine path to local data directory")]
+    NoPath,
+    #[error("failed to create parent directories")]
+    Mkdir(#[source] std::io::Error),
+    #[error("failed to serialize options")]
+    Serialize(#[source] serde_json::Error),
+    #[error("failed to write options to disk")]
+    Write(#[source] std::io::Error),
+}
+
+#[derive(Debug, Error)]
+#[error("Failed to read options from disk")]
+pub(crate) struct LoadError(#[source] LoadErrorSource);
+
+impl LoadError {
+    fn no_path() -> Self {
+        LoadError(LoadErrorSource::NoPath)
+    }
+
+    fn read(e: std::io::Error) -> Self {
+        LoadError(LoadErrorSource::Read(e))
+    }
+
+    fn deserialize(e: serde_json::Error) -> Self {
+        LoadError(LoadErrorSource::Deserialize(e))
+    }
+}
+
+#[derive(Debug, Error)]
+enum LoadErrorSource {
+    #[error("failed to determine path to local data directory")]
+    NoPath,
+    #[error("failed to read options file")]
+    Read(#[source] std::io::Error),
+    #[error("failed to deserialize options")]
+    Deserialize(#[source] serde_json::Error),
 }
 
 #[derive(Clone, Copy, Debug, Enum, Eq, PartialEq)]
@@ -150,7 +240,8 @@ impl Adjustable for bool {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub(crate) enum LevelSize {
     Small,
     Medium,
@@ -247,6 +338,61 @@ impl fmt::Display for FruitQty {
     }
 }
 
+impl Serialize for FruitQty {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.0.serialize(serializer)
+    }
+}
+
+macro_rules! try_visit_int {
+    ($($t:ty, $visit:ident),* $(,)?) => {
+        $(
+            fn $visit<E>(self, value: $t) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                usize::try_from(value).ok().filter(|qty| (1..=consts::MAX_FRUITS).contains(&qty))
+                    .map(FruitQty)
+                    .ok_or_else(|| E::invalid_value(Unexpected::Signed(value.into()), &self))
+            }
+        )*
+    }
+}
+
+macro_rules! try_visit_uint {
+    ($($t:ty, $visit:ident),* $(,)?) => {
+        $(
+            fn $visit<E>(self, value: $t) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                usize::try_from(value).ok().filter(|qty| (1..=consts::MAX_FRUITS).contains(&qty))
+                    .map(FruitQty)
+                    .ok_or_else(|| E::invalid_value(Unexpected::Unsigned(value.into()), &self))
+            }
+        )*
+    }
+}
+
+impl<'de> Deserialize<'de> for FruitQty {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Visitor;
+
+        impl serde::de::Visitor<'_> for Visitor {
+            type Value = FruitQty;
+
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "a number from 1 to {}", consts::MAX_FRUITS)
+            }
+
+            try_visit_int!(i8, visit_i8, i16, visit_i16, i32, visit_i32, i64, visit_i64);
+            try_visit_uint!(u8, visit_u8, u16, visit_u16, u32, visit_u32, u64, visit_u64);
+        }
+
+        deserializer.deserialize_any(Visitor)
+    }
+}
+
 impl Adjustable for FruitQty {
     fn increase(&mut self) {
         if self.can_increase() {
@@ -320,6 +466,35 @@ mod tests {
             .max()
             .unwrap();
             assert_eq!(actual_width, usize::from(OptValue::DISPLAY_WIDTH));
+        }
+    }
+
+    mod fruit_qty {
+        use super::*;
+        use rstest::rstest;
+
+        #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+        struct FruitStruct {
+            fruits: FruitQty,
+        }
+
+        #[rstest]
+        #[case(1)]
+        #[case(5)]
+        #[case(10)]
+        fn deserialize_good_json(#[case] qty: usize) {
+            let src = format!(r#"{{"fruits": {qty}}}"#);
+            let value = serde_json::from_str::<FruitStruct>(&src).unwrap();
+            assert_eq!(value.fruits.get(), qty);
+        }
+
+        #[rstest]
+        #[case(-1)]
+        #[case(0)]
+        #[case(15)]
+        fn deserialize_bad_json(#[case] qty: isize) {
+            let src = format!(r#"{{"fruits": {qty}}}"#);
+            assert!(serde_json::from_str::<FruitStruct>(&src).is_err());
         }
     }
 
