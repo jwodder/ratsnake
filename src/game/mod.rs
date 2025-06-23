@@ -1,19 +1,21 @@
 mod direction;
 mod levels;
+mod paused;
 mod snake;
 use self::direction::Direction;
 use self::levels::{Bounds, LevelMap};
+use self::paused::{PauseOpt, Paused};
 use self::snake::Snake;
 use crate::app::AppState;
 use crate::command::Command;
 use crate::consts;
 use crate::options::Options;
-use crate::util::get_display_area;
+use crate::util::{center_rect, get_display_area};
 use crossterm::event::{poll, read, Event};
 use rand::{seq::IteratorRandom, Rng};
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Flex, Layout, Margin, Position, Rect},
+    layout::{Constraint, Layout, Margin, Position, Rect, Size},
     style::Style,
     text::{Line, Span},
     widgets::{Block, Widget},
@@ -30,6 +32,7 @@ pub(crate) struct Game<R = rand::rngs::ThreadRng> {
     fruits: HashSet<Position>,
     state: GameState,
     map: LevelMap,
+    options: Options,
 }
 
 impl Game<rand::rngs::ThreadRng> {
@@ -55,6 +58,7 @@ impl<R: Rng> Game<R> {
             fruits: HashSet::new(),
             state: GameState::Running,
             map,
+            options,
         };
         for _ in 0..options.fruits.get() {
             game.place_fruit();
@@ -74,18 +78,12 @@ impl<R: Rng> Game<R> {
                     wait = wait.saturating_sub(now.elapsed());
                 } else {
                     self.advance();
-                    break;
+                    return Ok(None);
                 }
             }
-        } else if let Some(ev) = read()?.as_key_press_event() {
-            if matches!(
-                Command::from_key_event(ev),
-                Some(Command::Quit | Command::Enter)
-            ) {
-                return Ok(Some(AppState::Quit));
-            }
+        } else {
+            Ok(self.handle_event(read()?))
         }
-        Ok(None)
     }
 
     fn advance(&mut self) {
@@ -130,19 +128,48 @@ impl<R> Game<R> {
     }
 
     fn handle_event(&mut self, event: Event) -> Option<AppState> {
-        match Command::from_key_event(event.as_key_press_event()?)? {
-            Command::Quit => return Some(AppState::Quit),
-            Command::Up => self.snake.turn(Direction::North),
-            Command::Left => self.snake.turn(Direction::West),
-            Command::Down => self.snake.turn(Direction::South),
-            Command::Right => self.snake.turn(Direction::East),
-            _ => (),
+        match self.state {
+            GameState::Running => {
+                if event == Event::FocusLost {
+                    self.pause();
+                } else {
+                    match Command::from_key_event(event.as_key_press_event()?)? {
+                        Command::Quit => return Some(AppState::Quit),
+                        Command::Up => self.snake.turn(Direction::North),
+                        Command::Left => self.snake.turn(Direction::West),
+                        Command::Down => self.snake.turn(Direction::South),
+                        Command::Right => self.snake.turn(Direction::East),
+                        Command::Esc => self.pause(),
+                        _ => (),
+                    }
+                }
+            }
+            GameState::Paused(ref mut paused) => match paused.handle_event(event)? {
+                PauseOpt::Resume => self.state = GameState::Running,
+                PauseOpt::Restart => return Some(AppState::Game(Game::new(self.options))),
+                PauseOpt::MainMenu => {
+                    return Some(AppState::Main(crate::menu::MainMenu::new(self.options)))
+                }
+                PauseOpt::Quit => return Some(AppState::Quit),
+            },
+            GameState::Dead | GameState::Exhausted => {
+                if matches!(
+                    Command::from_key_event(event.as_key_press_event()?),
+                    Some(Command::Quit | Command::Enter)
+                ) {
+                    return Some(AppState::Quit);
+                }
+            }
         }
         None
     }
 
     fn running(&self) -> bool {
         self.state == GameState::Running
+    }
+
+    fn pause(&mut self) {
+        self.state = GameState::Paused(Paused::new());
     }
 }
 
@@ -159,12 +186,10 @@ impl<R> Widget for &Game<R> {
         Line::styled(format!(" Score: {}", self.score), consts::SCORE_BAR_STYLE)
             .render(score_area, buf);
 
-        let [block_area] = Layout::horizontal([self.map.size().width.saturating_add(2)])
-            .flex(Flex::Center)
-            .areas(block_area);
-        let [block_area] = Layout::vertical([self.map.size().height.saturating_add(2)])
-            .flex(Flex::Center)
-            .areas(block_area);
+        let mut block_size = self.map.size();
+        block_size.width = block_size.width.saturating_add(2);
+        block_size.height = block_size.height.saturating_add(2);
+        let block_area = center_rect(block_area, block_size);
         if self.map.wrap() {
             DottedBorder.render(block_area, buf);
         } else {
@@ -203,6 +228,16 @@ impl<R> Widget for &Game<R> {
 
         match self.state {
             GameState::Running => (),
+            GameState::Paused(paused) => {
+                let pause_area = center_rect(
+                    display,
+                    Size {
+                        width: Paused::WIDTH,
+                        height: Paused::HEIGHT,
+                    },
+                );
+                paused.render(pause_area, buf);
+            }
             GameState::Dead => {
                 Span::from(" Oh dear, you are dead!").render(msg1_area, buf);
                 Span::from(" Press ENTER to exit.").render(msg2_area, buf);
@@ -278,6 +313,7 @@ impl Widget for DottedBorder {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum GameState {
     Running,
+    Paused(Paused),
     Dead,
     /// The snake has filled the board and there are no more spaces to place
     /// fruits in.
@@ -288,6 +324,7 @@ enum GameState {
 mod tests {
     use super::*;
     use crate::options::LevelSize;
+    use crossterm::event::KeyCode;
     use rand::SeedableRng;
     use rand_chacha::ChaCha12Rng;
     use std::collections::VecDeque;
@@ -485,6 +522,49 @@ mod tests {
         expected.set_style(Rect::new(0, 0, 80, 1), consts::SCORE_BAR_STYLE);
         expected.set_style(Rect::new(40, 12, 1, 1), consts::SNAKE_STYLE);
         expected.set_style(Rect::new(66, 17, 1, 1), consts::FRUIT_STYLE);
+        pretty_assertions::assert_eq!(buffer, expected);
+    }
+
+    #[test]
+    fn paused() {
+        let mut game = Game::new_with_rng(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
+        let area = Rect::new(0, 0, 80, 24);
+        let mut buffer = Buffer::empty(area);
+        assert!(game.handle_event(Event::Key(KeyCode::Esc.into())).is_none());
+        game.render(area, &mut buffer);
+        let mut expected = Buffer::with_lines([
+            " Score: 0",
+            " ┌────────────────────────────────────────────────────────────────────────────┐ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                             ┌──── PAUSED ─────┐                            │ ",
+            " │                          ●  │ » Resume (Esc)  │                            │ ",
+            " │                             │   Restart (r)   │                            │ ",
+            " │                             │   Main Menu (m) │                            │ ",
+            " │                             │   Quit (q)      │                            │ ",
+            " │                             └─────────────────┘                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " └────────────────────────────────────────────────────────────────────────────┘ ",
+            "",
+            "",
+        ]);
+        expected.set_style(Rect::new(0, 0, 80, 1), consts::SCORE_BAR_STYLE);
+        expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
+        expected.set_style(Rect::new(43, 10, 3, 1), consts::KEY_STYLE);
+        expected.set_style(Rect::new(33, 10, 15, 1), consts::MENU_SELECTION_STYLE);
+        expected.set_style(Rect::new(44, 11, 1, 1), consts::KEY_STYLE);
+        expected.set_style(Rect::new(46, 12, 1, 1), consts::KEY_STYLE);
+        expected.set_style(Rect::new(41, 13, 1, 1), consts::KEY_STYLE);
         pretty_assertions::assert_eq!(buffer, expected);
     }
 }

@@ -58,23 +58,6 @@ pub(crate) enum OptKey {
 
 impl OptKey {
     pub(crate) const DISPLAY_WIDTH: u16 = 10;
-    pub(crate) const MIN: OptKey = OptKey::Wraparound;
-    pub(crate) const MAX: OptKey = OptKey::LevelSize;
-
-    pub(crate) fn iter() -> impl Iterator<Item = OptKey> {
-        (0..Self::LENGTH).map(Self::from_usize)
-    }
-
-    pub(crate) fn next(self) -> Option<OptKey> {
-        self.into_usize()
-            .checked_add(1)
-            .filter(|&j| j < Self::LENGTH)
-            .map(Self::from_usize)
-    }
-
-    pub(crate) fn prev(self) -> Option<OptKey> {
-        self.into_usize().checked_sub(1).map(Self::from_usize)
-    }
 
     pub(crate) fn as_str(&self) -> &'static str {
         match self {
@@ -294,6 +277,7 @@ mod tests {
 
     mod opt_key {
         use super::*;
+        use crate::util::EnumExt;
 
         #[test]
         fn display_width() {
@@ -314,16 +298,6 @@ mod tests {
                 ),
                 "Fruits    "
             );
-        }
-
-        #[test]
-        fn min() {
-            assert_eq!(OptKey::from_usize(0), OptKey::MIN);
-        }
-
-        #[test]
-        fn max() {
-            assert_eq!(OptKey::from_usize(OptKey::LENGTH - 1), OptKey::MAX);
         }
     }
 

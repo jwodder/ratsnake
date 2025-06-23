@@ -5,7 +5,7 @@ use crate::command::Command;
 use crate::consts;
 use crate::game::Game;
 use crate::options::{Adjustable, OptKey, OptValue, Options};
-use crate::util::get_display_area;
+use crate::util::{get_display_area, EnumExt};
 use crossterm::event::{read, Event};
 use enum_map::{Enum, EnumMap};
 use ratatui::{
@@ -91,9 +91,9 @@ impl MainMenu {
         if selection == Selection::Options {
             if let Some(first) = first_option {
                 self.options.selection = if first {
-                    Some(OptKey::MIN)
+                    Some(OptKey::min())
                 } else {
-                    Some(OptKey::MAX)
+                    Some(OptKey::max())
                 };
             } else {
                 self.options.selection = None;
@@ -595,12 +595,12 @@ mod tests {
             for _ in OptKey::iter() {
                 assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             }
-            assert_eq!(menu.options.selection, Some(OptKey::MAX));
+            assert_eq!(menu.options.selection, Some(OptKey::max()));
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             assert_eq!(menu.options.selection, None);
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
-            assert_eq!(menu.options.selection, Some(OptKey::MIN));
+            assert_eq!(menu.options.selection, Some(OptKey::min()));
         }
     }
 
