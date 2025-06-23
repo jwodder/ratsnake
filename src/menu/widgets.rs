@@ -2,7 +2,7 @@ use crate::consts;
 use ratatui::{
     buffer::Buffer,
     layout::{Offset, Rect},
-    text::Text,
+    text::{Line, Span, Text},
     widgets::Widget,
 };
 
@@ -55,20 +55,46 @@ pub(super) struct Instructions;
 impl Instructions {
     pub(super) const HEIGHT: u16 = 6;
     pub(super) const WIDTH: u16 = 20;
-
-    const TEXT: [&'static str; Self::HEIGHT as usize] = [
-        "Move the snake with:",
-        "       ← ↓ ↑ →",
-        "   or: h j k l",
-        "   or: a s w d",
-        "Eat the fruit, but",
-        "don't hit yourself!",
-    ];
 }
 
 impl Widget for Instructions {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        Text::from_iter(Self::TEXT).render(area, buf);
+        Text::from_iter([
+            Line::from("Move the snake with:"),
+            Line::from_iter([
+                Span::raw("       "),
+                Span::styled("←", consts::KEY_STYLE),
+                Span::raw(" "),
+                Span::styled("↓", consts::KEY_STYLE),
+                Span::raw(" "),
+                Span::styled("↑", consts::KEY_STYLE),
+                Span::raw(" "),
+                Span::styled("→", consts::KEY_STYLE),
+            ]),
+            Line::from_iter([
+                Span::raw("   or: "),
+                Span::styled("h", consts::KEY_STYLE),
+                Span::raw(" "),
+                Span::styled("j", consts::KEY_STYLE),
+                Span::raw(" "),
+                Span::styled("k", consts::KEY_STYLE),
+                Span::raw(" "),
+                Span::styled("l", consts::KEY_STYLE),
+            ]),
+            Line::from_iter([
+                Span::raw("   or: "),
+                Span::styled("a", consts::KEY_STYLE),
+                Span::raw(" "),
+                Span::styled("s", consts::KEY_STYLE),
+                Span::raw(" "),
+                Span::styled("w", consts::KEY_STYLE),
+                Span::raw(" "),
+                Span::styled("d", consts::KEY_STYLE),
+            ]),
+            Line::from("Eat the fruit, but"),
+            Line::from("don't hit yourself!"),
+        ])
+        .render(area, buf);
     }
 }
 
@@ -134,17 +160,5 @@ mod tests {
                 .iter()
                 .all(|ln| ln.len() == usize::from(Logo::SNAKE_WIDTH)));
         }
-    }
-
-    #[test]
-    fn instructions_width() {
-        assert_eq!(
-            Instructions::TEXT
-                .iter()
-                .map(|ln| ln.chars().count())
-                .max()
-                .unwrap(),
-            usize::from(Instructions::WIDTH)
-        );
     }
 }

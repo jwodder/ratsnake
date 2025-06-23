@@ -131,9 +131,13 @@ impl Widget for &MainMenu {
         } else {
             Style::new()
         };
-        Line::from(Span::styled("[Play (p)]", play_style))
-            .centered()
-            .render(play_area, buf);
+        Line::from_iter([
+            Span::styled("[Play (", play_style),
+            Span::styled("p", consts::KEY_STYLE.patch(play_style)),
+            Span::styled(")]", play_style),
+        ])
+        .centered()
+        .render(play_area, buf);
 
         let [options_area] = Layout::horizontal([OptionsMenu::WIDTH])
             .flex(Flex::Center)
@@ -145,9 +149,13 @@ impl Widget for &MainMenu {
         } else {
             Style::new()
         };
-        Line::from(Span::styled("[Quit (q)]", qstyle))
-            .centered()
-            .render(quit_area, buf);
+        Line::from_iter([
+            Span::styled("[Quit (", qstyle),
+            Span::styled("q", consts::KEY_STYLE.patch(qstyle)),
+            Span::styled(")]", qstyle),
+        ])
+        .centered()
+        .render(quit_area, buf);
     }
 }
 
@@ -340,7 +348,21 @@ mod tests {
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(37, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(42, 13, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(35, 13, 10, 1), consts::MENU_SELECTION_STYLE);
+            expected.set_style(Rect::new(42, 22, 1, 1), consts::KEY_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
         }
 
@@ -381,7 +403,21 @@ mod tests {
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(37, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(42, 13, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(28, 16, 24, 1), consts::MENU_SELECTION_STYLE);
+            expected.set_style(Rect::new(42, 22, 1, 1), consts::KEY_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -418,6 +454,20 @@ mod tests {
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(28, 16, 24, 1), consts::MENU_SELECTION_STYLE);
+            expected.set_style(Rect::new(37, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(42, 13, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(42, 22, 1, 1), consts::KEY_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -462,7 +512,21 @@ mod tests {
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(37, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(42, 13, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(28, 19, 24, 1), consts::MENU_SELECTION_STYLE);
+            expected.set_style(Rect::new(42, 22, 1, 1), consts::KEY_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -498,7 +562,21 @@ mod tests {
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(37, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(42, 13, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(28, 19, 24, 1), consts::MENU_SELECTION_STYLE);
+            expected.set_style(Rect::new(42, 22, 1, 1), consts::KEY_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -534,7 +612,21 @@ mod tests {
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(37, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 7, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 8, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(42, 13, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(28, 19, 24, 1), consts::MENU_SELECTION_STYLE);
+            expected.set_style(Rect::new(42, 22, 1, 1), consts::KEY_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
         }
 
