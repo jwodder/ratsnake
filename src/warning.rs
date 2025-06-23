@@ -364,7 +364,7 @@ mod tests {
 
     #[test]
     fn render_scrolling() {
-        let warning = Warning::from_error_messages(vec![
+        let mut warning = Warning::from_error_messages(vec![
             String::from("'Twas brillig, and the slithy toves"),
             String::from("Did gyre and gimble in the wabe;"),
             String::from("All mimsy were the borogoves,"),
@@ -387,6 +387,7 @@ mod tests {
             String::from("He went galumping back."),
         ]);
         let area = Rect::new(0, 0, 80, 24);
+
         let mut buffer = Buffer::empty(area);
         warning.render(area, &mut buffer);
         let expected = Buffer::with_lines([
@@ -415,6 +416,75 @@ mod tests {
             "",
             "",
         ]);
+        pretty_assertions::assert_eq!(buffer, expected);
+
+        assert!(warning.handle_command(Command::Down).is_none());
+        let mut buffer = Buffer::empty(area);
+        warning.render(area, &mut buffer);
+        let expected = Buffer::with_lines([
+            "",
+            "",
+            "             ┌───────────────────── WARNING ──────────────────────┐             ",
+            "             │                                                  ▲ │             ",
+            "             │ Caused by:                                       ▒ │             ",
+            "             │     0: Did gyre and gimble in the wabe;          █ │             ",
+            "             │     1: All mimsy were the borogoves,             █ │             ",
+            "             │     2: And the mome raths outgrabe.              █ │             ",
+            "             │     3: Beware the Jabberwock, my son!            █ │             ",
+            "             │     4: The jaws that bite, the claws that catch! █ │             ",
+            "             │     5: Beware the Jubjub bird, and shun          █ │             ",
+            "             │     6: The frumious Bandersnatch!                █ │             ",
+            "             │     7: He took his vorpal sword in hand:         █ │             ",
+            "             │     8: Long time the manxome foe he sought--     █ │             ",
+            "             │     9: So rested he by the Tumtum tree,          ▒ │             ",
+            "             │    10: And stood awhile in thought.              ▒ │             ",
+            "             │    11: And as in uffish thought he stood,        ▒ │             ",
+            "             │    12: The Jabberwock, with eyes of flame,       ▒ │             ",
+            "             │    13: Came whiffling through the tulgey wood,   ▼ │             ",
+            "             │                                                    │             ",
+            "             │                        [OK]                        │             ",
+            "             └────────────────────────────────────────────────────┘             ",
+            "",
+            "",
+        ]);
+        pretty_assertions::assert_eq!(buffer, expected);
+
+        for _ in 0..8 {
+            assert!(warning.handle_command(Command::Down).is_none());
+        }
+        let mut buffer = Buffer::empty(area);
+        warning.render(area, &mut buffer);
+        let expected = Buffer::with_lines([
+            "",
+            "",
+            "             ┌───────────────────── WARNING ──────────────────────┐             ",
+            "             │     4: The jaws that bite, the claws that catch! ▲ │             ",
+            "             │     5: Beware the Jubjub bird, and shun          ▒ │             ",
+            "             │     6: The frumious Bandersnatch!                ▒ │             ",
+            "             │     7: He took his vorpal sword in hand:         ▒ │             ",
+            "             │     8: Long time the manxome foe he sought--     ▒ │             ",
+            "             │     9: So rested he by the Tumtum tree,          █ │             ",
+            "             │    10: And stood awhile in thought.              █ │             ",
+            "             │    11: And as in uffish thought he stood,        █ │             ",
+            "             │    12: The Jabberwock, with eyes of flame,       █ │             ",
+            "             │    13: Came whiffling through the tulgey wood,   █ │             ",
+            "             │    14: And burbled as it came!                   █ │             ",
+            "             │    15: One, two!  One, two!  And through and     █ │             ",
+            "             │        through                                   █ │             ",
+            "             │    16: The vorpal blade went snicker-snack!      █ │             ",
+            "             │    17: He left it dead, and with its head        █ │             ",
+            "             │    18: He went galumping back.                   ▼ │             ",
+            "             │                                                    │             ",
+            "             │                        [OK]                        │             ",
+            "             └────────────────────────────────────────────────────┘             ",
+            "",
+            "",
+        ]);
+        pretty_assertions::assert_eq!(buffer, expected);
+
+        assert!(warning.handle_command(Command::Down).is_none());
+        let mut buffer = Buffer::empty(area);
+        warning.render(area, &mut buffer);
         pretty_assertions::assert_eq!(buffer, expected);
     }
 }
