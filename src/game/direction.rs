@@ -1,6 +1,7 @@
 use crate::util::Bounds;
 use ratatui::layout::Position;
 
+/// An enum of the directions in which the snake can move
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum Direction {
     North,
@@ -10,6 +11,10 @@ pub(super) enum Direction {
 }
 
 impl Direction {
+    /// Move `pos` in this direction and return the new position.  If `pos`
+    /// moves outside of `bounds` and `bounds.wrap` is `true`, the position
+    /// will wrap around.  If `pos` moves outside of `bounds` and `bounds.wrap`
+    /// is `false`, `None` is returned.
     pub(super) fn advance(self, pos: Position, bounds: Bounds) -> Option<Position> {
         let Position { mut x, mut y } = pos;
         match self {
@@ -29,6 +34,7 @@ impl Direction {
         Some(Position { x, y })
     }
 
+    /// Return the direction going in the opposite way from this direction
     pub(super) fn reverse(self) -> Direction {
         match self {
             Direction::North => Direction::South,
@@ -39,6 +45,9 @@ impl Direction {
     }
 }
 
+/// Decrease `x` by 1 and return the result.  If the new value would go outside
+/// `0..max`, then either return `None` (if `wrap` is `false`) or wrap the
+/// value around (if `wrap` is `true`).
 fn decrement_in_bounds(x: u16, max: u16, wrap: bool) -> Option<u16> {
     if let Some(x2) = x.checked_sub(1) {
         Some(x2)
@@ -49,6 +58,9 @@ fn decrement_in_bounds(x: u16, max: u16, wrap: bool) -> Option<u16> {
     }
 }
 
+/// Increase `x` by 1 and return the result.  If the new value would go outside
+/// `0..max`, then either return `None` (if `wrap` is `false`) or wrap the
+/// value around (if `wrap` is `true`).
 fn increment_in_bounds(x: u16, max: u16, wrap: bool) -> Option<u16> {
     if let Some(x2) = x.checked_add(1).filter(|&xx| xx < max) {
         Some(x2)
