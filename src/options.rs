@@ -314,7 +314,6 @@ impl Adjustable for LevelSize {
 pub(crate) struct FruitQty(usize);
 
 impl FruitQty {
-    #[allow(unused)]
     pub(crate) fn new(qty: usize) -> Option<FruitQty> {
         (1..=consts::MAX_FRUITS)
             .contains(&qty)
@@ -351,8 +350,7 @@ macro_rules! try_visit_int {
             where
                 E: serde::de::Error,
             {
-                usize::try_from(value).ok().filter(|qty| (1..=consts::MAX_FRUITS).contains(&qty))
-                    .map(FruitQty)
+                usize::try_from(value).ok().and_then(FruitQty::new)
                     .ok_or_else(|| E::invalid_value(Unexpected::Signed(value.into()), &self))
             }
         )*
@@ -366,8 +364,7 @@ macro_rules! try_visit_uint {
             where
                 E: serde::de::Error,
             {
-                usize::try_from(value).ok().filter(|qty| (1..=consts::MAX_FRUITS).contains(&qty))
-                    .map(FruitQty)
+                usize::try_from(value).ok().and_then(FruitQty::new)
                     .ok_or_else(|| E::invalid_value(Unexpected::Unsigned(value.into()), &self))
             }
         )*
