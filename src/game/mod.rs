@@ -25,26 +25,50 @@ use std::collections::HashSet;
 use std::num::NonZeroU32;
 use std::time::Instant;
 
+/// Snake game screen
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct Game<R = rand::rngs::ThreadRng> {
+    /// The random-number generator used for generating obstacles and fruit
     rng: R,
+
+    /// The current score, equal to the number of fruits eaten
     score: u32,
+
+    /// The current high score for the current gameplay options.
+    ///
+    /// If `score` exceeds this value, `high_score` is not updated.
     high_score: Option<NonZeroU32>,
+
+    /// The state of the snake itself
     snake: Snake,
+
+    /// The positions of the fruits in the level
     fruits: HashSet<Position>,
+
+    /// The state that the game is currently in
     state: GameState,
+
+    /// The map of the game level
     map: LevelMap,
+
+    /// Global data (options & high scores)
     globals: Globals,
+
+    /// The next time at which the snake should move forwards.  If `None`, the
+    /// next value will be calculated on the next call to
+    /// [`Game::process_input()`]
     next_tick: Option<Instant>,
 }
 
 impl Game<rand::rngs::ThreadRng> {
+    /// Create a new game from the given globals using the thread RNG
     pub(crate) fn new(globals: Globals) -> Self {
         Game::new_with_rng(globals, rand::rng())
     }
 }
 
 impl<R: Rng> Game<R> {
+    /// Create a new game from the given globals using the given RNG
     pub(crate) fn new_with_rng(globals: Globals, mut rng: R) -> Game<R> {
         let mut map = LevelMap::new(globals.options.level_bounds());
         if globals.options.obstacles {
@@ -70,6 +94,12 @@ impl<R: Rng> Game<R> {
         game
     }
 
+    /// Handle the next input event.  If the game is currently running and no
+    /// event is received before [`Game::next_tick`] passes, the snake
+    /// advances and the method returns.
+    ///
+    /// Returns `Some(screen)` if the application should switch to a different
+    /// screen or quit.
     pub(crate) fn process_input(&mut self) -> std::io::Result<Option<Screen>> {
         if self.running() {
             if self.next_tick.is_none() {
@@ -89,6 +119,8 @@ impl<R: Rng> Game<R> {
         }
     }
 
+    /// Move the snake forwards and respond to any fruits or obstacles it came
+    /// into contact with
     fn advance(&mut self) {
         if !self.running() {
             return;
@@ -111,6 +143,8 @@ impl<R: Rng> Game<R> {
         }
     }
 
+    /// Place a fruit at a randomly-selected empty position in the level, if
+    /// any
     fn place_fruit(&mut self) {
         let mut occupied = &self.fruits | self.map.obstacles();
         occupied.insert(self.snake.head());
@@ -126,10 +160,15 @@ impl<R: Rng> Game<R> {
 }
 
 impl<R> Game<R> {
+    /// Draw the game on the given frame
     pub(crate) fn draw(&self, frame: &mut Frame<'_>) {
         frame.render_widget(self, frame.area());
     }
 
+    /// Handle the given input event.
+    ///
+    /// Returns `Some(screen)` if the application should switch to a different
+    /// screen or quit.
     fn handle_event(&mut self, event: Event) -> Option<Screen> {
         match self.state {
             GameState::Running => {
@@ -186,6 +225,11 @@ impl<R> Game<R> {
         None
     }
 
+    /// Check for a new high score and, if there is one, update the high scores
+    /// and write them to disk.
+    ///
+    /// Any errors that occur while updating the high score file are converted
+    /// into a [`Warning`] for display.
     fn finalize_score(&mut self) -> PostMortem {
         if let Some(score) = self.new_high_score() {
             self.globals.high_scores.set(self.globals.options, score);
@@ -202,14 +246,17 @@ impl<R> Game<R> {
         }
     }
 
+    /// If the score exceeds the current high score, return the new high score.
     fn new_high_score(&self) -> Option<NonZeroU32> {
         NonZeroU32::new(self.score).filter(|&score| self.high_score.is_none_or(|hs| hs < score))
     }
 
+    /// Is the game currently running (and not paused or over?)
     fn running(&self) -> bool {
         self.state == GameState::Running
     }
 
+    /// Pause the game
     fn pause(&mut self) {
         self.state = GameState::Paused(Paused::new());
     }
@@ -314,6 +361,8 @@ impl<R> Widget for &Game<R> {
     }
 }
 
+/// A portion of a [`Buffer`] that provides methods for drawing individual
+/// cells using coordinates relative to the top-left corner of `area`
 #[derive(Debug, Eq, PartialEq)]
 struct Canvas<'a> {
     area: Rect,
@@ -321,6 +370,7 @@ struct Canvas<'a> {
 }
 
 impl Canvas<'_> {
+    /// Set the cell at `pos` to `symbol`
     fn draw_char(&mut self, pos: Position, symbol: char) {
         let Some(x) = self.area.x.checked_add(pos.x) else {
             return;
@@ -330,9 +380,11 @@ impl Canvas<'_> {
         };
         if let Some(cell) = self.buf.cell_mut((x, y)) {
             cell.set_char(symbol);
+            cell.set_style(Style::reset());
         }
     }
 
+    /// Set the cell at `pos` to `symbol` with the given style
     fn draw_cell(&mut self, pos: Position, symbol: char, style: Style) {
         let Some(x) = self.area.x.checked_add(pos.x) else {
             return;
@@ -347,6 +399,9 @@ impl Canvas<'_> {
     }
 }
 
+/// A widget for drawing a border made of dots around the edge of an area.
+///
+/// Like [`Block::bordered()`], but with different characters.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct DottedBorder;
 
@@ -374,19 +429,31 @@ impl Widget for DottedBorder {
     }
 }
 
+/// An enum of the states that a game can be in
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum GameState {
+    /// The game is currently running
     Running,
+
+    /// The game is currently paused
     Paused(Paused),
+
+    /// The game ended due to the snake colliding with something
     Dead(PostMortem),
+
     /// The snake has filled the board and there are no more spaces to place
-    /// fruits in.
+    /// fruits in
     Exhausted(PostMortem),
 }
 
+/// End-of-game report
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct PostMortem {
+    /// True if a new high score was set
     new_high_score: bool,
+
+    /// A warning to display about an error, if any, that occurred while
+    /// updating the high score file
     warning: Option<Warning>,
 }
 
