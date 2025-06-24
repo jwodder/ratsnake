@@ -53,7 +53,7 @@ impl Widget for Logo {
 pub(super) struct Instructions;
 
 impl Instructions {
-    pub(super) const HEIGHT: u16 = 6;
+    pub(super) const HEIGHT: u16 = 7;
     pub(super) const WIDTH: u16 = 20;
 }
 
@@ -90,6 +90,16 @@ impl Widget for Instructions {
                 Span::styled("w", consts::KEY_STYLE),
                 Span::raw(" "),
                 Span::styled("d", consts::KEY_STYLE),
+            ]),
+            Line::from_iter([
+                Span::raw("   or: "),
+                Span::styled("4", consts::KEY_STYLE),
+                Span::raw(" "),
+                Span::styled("2", consts::KEY_STYLE),
+                Span::raw(" "),
+                Span::styled("8", consts::KEY_STYLE),
+                Span::raw(" "),
+                Span::styled("6", consts::KEY_STYLE),
             ]),
             Line::from("Eat the fruit, but"),
             Line::from("don't hit yourself!"),

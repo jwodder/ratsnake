@@ -32,8 +32,9 @@ terminal is bigger than this, the interface will be centered in the middle.  If
 your terminal is smaller, you're going to have a bad time.
 
 All screens in `ratsnake` support directional movement with the arrow keys,
-<kbd>h</kbd>/<kbd>j</kbd>/<kbd>k</kbd>/<kbd>l</kbd>, and
-<kbd>w</kbd>/<kbd>a</kbd>/<kbd>s</kbd>/<kbd>d</kbd>.  In addition, pressing
+<kbd>h</kbd>/<kbd>j</kbd>/<kbd>k</kbd>/<kbd>l</kbd>,
+<kbd>w</kbd>/<kbd>a</kbd>/<kbd>s</kbd>/<kbd>d</kbd>, and
+<kbd>2</kbd>/<kbd>4</kbd>/<kbd>6</kbd>/<kbd>8</kbd>.  In addition, pressing
 <kbd>Ctrl</kbd>+<kbd>C</kbd> at any point during program execution will
 immediately end the program.
 
@@ -64,20 +65,20 @@ The following options can be set:
 
 ### Key Bindings
 
-| Key                                          | Command                                                |
-| -------------------------------------------- | ------------------------------------------------------ |
-| <kbd>k</kbd>, <kbd>w</kbd>, <kbd>Up</kbd>    | Move up an item                                        |
-| <kbd>j</kbd>, <kbd>s</kbd>, <kbd>Down</kbd>  | Move down an item                                      |
-| <kbd>h</kbd>, <kbd>a</kbd>, <kbd>Left</kbd>  | Decrease or unset the current option                   |
-| <kbd>l</kbd>, <kbd>d</kbd>, <kbd>Right</kbd> | Increase or set the current option                     |
-| <kbd>Tab</kbd>                               | Move down an item, circling around at the bottom       |
-| <kbd>Shift</kbd>+<kbd>Tab</kbd>              | Move up an item, circling around at the top            |
-| <kbd>Home</kbd>                              | Jump to the first item in the menu                     |
-| <kbd>End</kbd>                               | Jump to the last item in the menu                      |
-| <kbd>Space</kbd>                             | Toggle the current option                              |
-| <kbd>Enter</kbd>                             | Toggle the current option or select the current button |
-| <kbd>p</kbd>                                 | Play a game of Snake                                   |
-| <kbd>q</kbd>                                 | Quit                                                   |
+| Key                                                        | Command                                                |
+| ---------------------------------------------------------- | ------------------------------------------------------ |
+| <kbd>k</kbd>, <kbd>w</kbd>, <kbd>8</kbd>, <kbd>Up</kbd>    | Move up an item                                        |
+| <kbd>j</kbd>, <kbd>s</kbd>, <kbd>2</kbd>, <kbd>Down</kbd>  | Move down an item                                      |
+| <kbd>h</kbd>, <kbd>a</kbd>, <kbd>4</kbd>, <kbd>Left</kbd>  | Decrease or unset the current option                   |
+| <kbd>l</kbd>, <kbd>d</kbd>, <kbd>6</kbd>, <kbd>Right</kbd> | Increase or set the current option                     |
+| <kbd>Tab</kbd>                                             | Move down an item, circling around at the bottom       |
+| <kbd>Shift</kbd>+<kbd>Tab</kbd>                            | Move up an item, circling around at the top            |
+| <kbd>Home</kbd>                                            | Jump to the first item in the menu                     |
+| <kbd>End</kbd>                                             | Jump to the last item in the menu                      |
+| <kbd>Space</kbd>                                           | Toggle the current option                              |
+| <kbd>Enter</kbd>                                           | Toggle the current option or select the current button |
+| <kbd>p</kbd>                                               | Play a game of Snake                                   |
+| <kbd>q</kbd>                                               | Quit                                                   |
 
 Game
 ----
