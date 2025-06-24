@@ -4,7 +4,7 @@ use crate::app::AppState;
 use crate::command::Command;
 use crate::consts;
 use crate::game::Game;
-use crate::options::{Adjustable, LoadError, OptKey, OptValue, Options};
+use crate::options::{Adjustable, OptKey, OptValue, Options};
 use crate::util::{get_display_area, EnumExt};
 use crate::warning::{Warning, WarningOutcome};
 use crossterm::event::{read, Event};
@@ -34,14 +34,6 @@ impl MainMenu {
             selection: Selection::default(),
             options: OptionsMenu::new(options),
             state: MenuState::Plain,
-        }
-    }
-
-    pub(crate) fn from_load_error(e: LoadError) -> Self {
-        MainMenu {
-            selection: Selection::default(),
-            options: OptionsMenu::new(Options::default()),
-            state: MenuState::LoadWarning(Warning::from(e)),
         }
     }
 
@@ -93,10 +85,6 @@ impl MainMenu {
                     self.select(Selection::Options, Some(false));
                 }
                 _ => (),
-            },
-            MenuState::LoadWarning(ref mut warning) => match warning.handle_command(cmd)? {
-                WarningOutcome::Dismissed => self.state = MenuState::Plain,
-                WarningOutcome::Quit => return Some(AppState::Quit),
             },
             MenuState::SaveWarning(ref mut warning) => match warning.handle_command(cmd)? {
                 WarningOutcome::Dismissed => return Some(AppState::Game(self.play())),
@@ -182,7 +170,7 @@ impl Widget for &MainMenu {
         .centered()
         .render(quit_area, buf);
 
-        if let MenuState::LoadWarning(warning) | MenuState::SaveWarning(warning) = &self.state {
+        if let MenuState::SaveWarning(warning) = &self.state {
             warning.render(display, buf);
         }
     }
@@ -191,7 +179,6 @@ impl Widget for &MainMenu {
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum MenuState {
     Plain,
-    LoadWarning(Warning),
     SaveWarning(Warning),
 }
 
