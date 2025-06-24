@@ -59,7 +59,7 @@ impl Instructions {
 
 impl Widget for Instructions {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        Text::from_iter([
+        let text = Text::from_iter([
             Line::from("Move the snake with:"),
             Line::from_iter([
                 Span::raw("       "),
@@ -93,8 +93,18 @@ impl Widget for Instructions {
             ]),
             Line::from("Eat the fruit, but"),
             Line::from("don't hit yourself!"),
-        ])
-        .render(area, buf);
+        ]);
+        debug_assert_eq!(
+            text.height(),
+            usize::from(Self::HEIGHT),
+            "Instructions::HEIGHT is wrong"
+        );
+        debug_assert_eq!(
+            text.width(),
+            usize::from(Self::WIDTH),
+            "Instructions::WIDTH is wrong"
+        );
+        text.render(area, buf);
     }
 }
 
