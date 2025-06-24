@@ -11,6 +11,8 @@ use ratatui::{
 };
 use std::borrow::Cow;
 
+/// A widget for displaying a warning about an error (including its source
+/// traceback messages) in a pop-up window
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct Warning {
     lines: Vec<String>,
@@ -19,10 +21,19 @@ pub(crate) struct Warning {
 }
 
 impl Warning {
+    /// The maximum number of lines to display at once
     const MAX_LINES: u16 = 16;
+
+    /// The width of the text area
     const TEXT_WIDTH: u16 = 48;
+
+    /// The width of the widget when scrolling is not in effect (When scrolling
+    /// is in effect, add 2 to this value for the scrollbar and the margin
+    /// between it & the text)
     const WIDTH: u16 = Self::TEXT_WIDTH + 4;
 
+    /// Process an input command.  Returns `Some` if the user dismisses the
+    /// pop-up or quits the application.
     pub(crate) fn handle_command(&mut self, cmd: Command) -> Option<WarningOutcome> {
         match (cmd, self.scrolling()) {
             (Command::Enter, _) => return Some(WarningOutcome::Dismissed),
@@ -42,10 +53,22 @@ impl Warning {
         None
     }
 
+    /// Does the text not fit in [`MAX_LINES`], necessitating scrolling and a
+    /// scrollbar?
     fn scrolling(&self) -> bool {
         self.lines.len() > usize::from(Self::MAX_LINES)
     }
 
+    /// Create a new `Warning` from a list of error messages and their source
+    /// error messages.
+    ///
+    /// `msgs[0]` is the `Display` of the top-level error being reported.
+    /// `msgs[1]` is the `Display` of the top-level error's source, if any.
+    /// `msgs[2]` is the `Display` of the source's source, and so on.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `msgs` is empty.
     fn from_error_messages(msgs: Vec<String>) -> Self {
         assert!(
             !msgs.is_empty(),
@@ -93,9 +116,14 @@ impl Warning {
     }
 }
 
+/// An enum of the ways that the user can finish working with a `Warning`
+/// pop-up
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum WarningOutcome {
+    /// The user dismissed the pop-up
     Dismissed,
+
+    /// The user quit the application
     Quit,
 }
 
@@ -112,8 +140,12 @@ impl<E: std::error::Error> From<E> for Warning {
 }
 
 impl Widget for &Warning {
-    // `area` is here the area of the entire display in which the program is
-    // drawing, not the area for just the widget proper.
+    /// Render a `Warning` in the given area of `buf`.
+    ///
+    /// Note that `area` should be the area of the entire display within which
+    /// the pop-up will be rendered.  The `render()` method will calculate a
+    /// `Rect` for the actual area inside `area` on which the drawing will
+    /// occur.
     fn render(self, area: Rect, buf: &mut Buffer) {
         let height = u16::try_from(self.lines.len())
             .unwrap_or(u16::MAX)
@@ -158,7 +190,6 @@ impl Widget for &Warning {
         } else {
             Text::from_iter(self.lines.iter().map(String::as_str)).render(text_area, buf);
         }
-
         Line::from("[OK]").centered().render(ok_area, buf);
     }
 }
