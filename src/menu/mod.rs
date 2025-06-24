@@ -154,9 +154,12 @@ impl Widget for &MainMenu {
             .areas(logo_area);
         Logo.render(logo_area, buf);
 
-        let [main_area] = Layout::vertical([OptionsMenu::HEIGHT + 4])
-            .flex(Flex::Start)
-            .areas(main_area);
+        let [_, main_area, _] = Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Length(OptionsMenu::HEIGHT + 4),
+            Constraint::Fill(2),
+        ])
+        .areas(main_area);
         let [form_area, instructions_area] =
             Layout::horizontal([OptionsMenu::WIDTH, Instructions::WIDTH])
                 .flex(Flex::SpaceAround)
@@ -382,6 +385,8 @@ mod tests {
                  "                                                                                ",
                  "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
                  "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
                  "           ┌ Options: ────────────────┐          Move the snake with:           ",
@@ -396,32 +401,30 @@ mod tests {
                  "                                                                                ",
                  "                                                                                ",
                  "                                                                                ",
-                 "                                                                                ",
-                 "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
             expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
-            expected.set_style(Rect::new(27, 8, 1, 1), consts::KEY_STYLE); // `p`
-            expected.set_style(Rect::new(20, 8, 10, 1), consts::MENU_SELECTION_STYLE); // Play button
-            expected.set_style(Rect::new(27, 17, 1, 1), consts::KEY_STYLE); // `q`
-            expected.set_style(Rect::new(56, 11, 1, 1), consts::KEY_STYLE); // `←`
-            expected.set_style(Rect::new(58, 11, 1, 1), consts::KEY_STYLE); // `↓`
-            expected.set_style(Rect::new(60, 11, 1, 1), consts::KEY_STYLE); // `↑`
-            expected.set_style(Rect::new(62, 11, 1, 1), consts::KEY_STYLE); // `→`
-            expected.set_style(Rect::new(56, 12, 1, 1), consts::KEY_STYLE); // `h`
-            expected.set_style(Rect::new(58, 12, 1, 1), consts::KEY_STYLE); // `j`
-            expected.set_style(Rect::new(60, 12, 1, 1), consts::KEY_STYLE); // `k`
-            expected.set_style(Rect::new(62, 12, 1, 1), consts::KEY_STYLE); // `l`
-            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `a`
-            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `w`
-            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `4`
-            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `2`
-            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `8`
-            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `6`
+            expected.set_style(Rect::new(27, 10, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(20, 10, 10, 1), consts::MENU_SELECTION_STYLE); // Play button
+            expected.set_style(Rect::new(27, 19, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
         }
 
@@ -444,6 +447,8 @@ mod tests {
                  "                                                                                ",
                  "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
                  "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
                  "           ┌ Options: ────────────────┐          Move the snake with:           ",
@@ -458,32 +463,30 @@ mod tests {
                  "                                                                                ",
                  "                                                                                ",
                  "                                                                                ",
-                 "                                                                                ",
-                 "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
             expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
-            expected.set_style(Rect::new(27, 8, 1, 1), consts::KEY_STYLE); // `p`
-            expected.set_style(Rect::new(13, 11, 24, 1), consts::MENU_SELECTION_STYLE); // "Wraparound" option
-            expected.set_style(Rect::new(27, 17, 1, 1), consts::KEY_STYLE); // `q`
-            expected.set_style(Rect::new(56, 11, 1, 1), consts::KEY_STYLE); // `←`
-            expected.set_style(Rect::new(58, 11, 1, 1), consts::KEY_STYLE); // `↓`
-            expected.set_style(Rect::new(60, 11, 1, 1), consts::KEY_STYLE); // `↑`
-            expected.set_style(Rect::new(62, 11, 1, 1), consts::KEY_STYLE); // `→`
-            expected.set_style(Rect::new(56, 12, 1, 1), consts::KEY_STYLE); // `h`
-            expected.set_style(Rect::new(58, 12, 1, 1), consts::KEY_STYLE); // `j`
-            expected.set_style(Rect::new(60, 12, 1, 1), consts::KEY_STYLE); // `k`
-            expected.set_style(Rect::new(62, 12, 1, 1), consts::KEY_STYLE); // `l`
-            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `a`
-            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `w`
-            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `4`
-            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `2`
-            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `8`
-            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `6`
+            expected.set_style(Rect::new(27, 10, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(13, 13, 24, 1), consts::MENU_SELECTION_STYLE); // "Wraparound" option
+            expected.set_style(Rect::new(27, 19, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -500,6 +503,8 @@ mod tests {
                 r"                   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|                  ",
                  "                                                                                ",
                  "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
+                 "                                                                                ",
+                 "                                                                                ",
                  "                                                                                ",
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
@@ -515,32 +520,30 @@ mod tests {
                  "                                                                                ",
                  "                                                                                ",
                  "                                                                                ",
-                 "                                                                                ",
-                 "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
             expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
-            expected.set_style(Rect::new(27, 8, 1, 1), consts::KEY_STYLE); // `p`
-            expected.set_style(Rect::new(13, 11, 24, 1), consts::MENU_SELECTION_STYLE); // "Wraparound" option
-            expected.set_style(Rect::new(27, 17, 1, 1), consts::KEY_STYLE); // `q`
-            expected.set_style(Rect::new(56, 11, 1, 1), consts::KEY_STYLE); // `←`
-            expected.set_style(Rect::new(58, 11, 1, 1), consts::KEY_STYLE); // `↓`
-            expected.set_style(Rect::new(60, 11, 1, 1), consts::KEY_STYLE); // `↑`
-            expected.set_style(Rect::new(62, 11, 1, 1), consts::KEY_STYLE); // `→`
-            expected.set_style(Rect::new(56, 12, 1, 1), consts::KEY_STYLE); // `h`
-            expected.set_style(Rect::new(58, 12, 1, 1), consts::KEY_STYLE); // `j`
-            expected.set_style(Rect::new(60, 12, 1, 1), consts::KEY_STYLE); // `k`
-            expected.set_style(Rect::new(62, 12, 1, 1), consts::KEY_STYLE); // `l`
-            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `a`
-            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `w`
-            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `4`
-            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `2`
-            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `8`
-            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `6`
+            expected.set_style(Rect::new(27, 10, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(13, 13, 24, 1), consts::MENU_SELECTION_STYLE); // "Wraparound" option
+            expected.set_style(Rect::new(27, 19, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -567,6 +570,8 @@ mod tests {
                  "                                                                                ",
                  "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
                  "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
                  "           ┌ Options: ────────────────┐          Move the snake with:           ",
@@ -581,32 +586,30 @@ mod tests {
                  "                                                                                ",
                  "                                                                                ",
                  "                                                                                ",
-                 "                                                                                ",
-                 "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
             expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
-            expected.set_style(Rect::new(27, 8, 1, 1), consts::KEY_STYLE); // `p`
-            expected.set_style(Rect::new(13, 14, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
-            expected.set_style(Rect::new(27, 17, 1, 1), consts::KEY_STYLE); // `q`
-            expected.set_style(Rect::new(56, 11, 1, 1), consts::KEY_STYLE); // `←`
-            expected.set_style(Rect::new(58, 11, 1, 1), consts::KEY_STYLE); // `↓`
-            expected.set_style(Rect::new(60, 11, 1, 1), consts::KEY_STYLE); // `↑`
-            expected.set_style(Rect::new(62, 11, 1, 1), consts::KEY_STYLE); // `→`
-            expected.set_style(Rect::new(56, 12, 1, 1), consts::KEY_STYLE); // `h`
-            expected.set_style(Rect::new(58, 12, 1, 1), consts::KEY_STYLE); // `j`
-            expected.set_style(Rect::new(60, 12, 1, 1), consts::KEY_STYLE); // `k`
-            expected.set_style(Rect::new(62, 12, 1, 1), consts::KEY_STYLE); // `l`
-            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `a`
-            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `w`
-            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `4`
-            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `2`
-            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `8`
-            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `6`
+            expected.set_style(Rect::new(27, 10, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(13, 16, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
+            expected.set_style(Rect::new(27, 19, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -623,6 +626,8 @@ mod tests {
                 r"                   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|                  ",
                  "                                                                                ",
                  "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
+                 "                                                                                ",
+                 "                                                                                ",
                  "                                                                                ",
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
@@ -638,32 +643,30 @@ mod tests {
                  "                                                                                ",
                  "                                                                                ",
                  "                                                                                ",
-                 "                                                                                ",
-                 "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
             expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
-            expected.set_style(Rect::new(27, 8, 1, 1), consts::KEY_STYLE); // `p`
-            expected.set_style(Rect::new(13, 14, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
-            expected.set_style(Rect::new(27, 17, 1, 1), consts::KEY_STYLE); // `q`
-            expected.set_style(Rect::new(56, 11, 1, 1), consts::KEY_STYLE); // `←`
-            expected.set_style(Rect::new(58, 11, 1, 1), consts::KEY_STYLE); // `↓`
-            expected.set_style(Rect::new(60, 11, 1, 1), consts::KEY_STYLE); // `↑`
-            expected.set_style(Rect::new(62, 11, 1, 1), consts::KEY_STYLE); // `→`
-            expected.set_style(Rect::new(56, 12, 1, 1), consts::KEY_STYLE); // `h`
-            expected.set_style(Rect::new(58, 12, 1, 1), consts::KEY_STYLE); // `j`
-            expected.set_style(Rect::new(60, 12, 1, 1), consts::KEY_STYLE); // `k`
-            expected.set_style(Rect::new(62, 12, 1, 1), consts::KEY_STYLE); // `l`
-            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `a`
-            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `w`
-            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `4`
-            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `2`
-            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `8`
-            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `6`
+            expected.set_style(Rect::new(27, 10, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(13, 16, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
+            expected.set_style(Rect::new(27, 19, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -681,6 +684,8 @@ mod tests {
                  "                                                                                ",
                  "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
                  "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
                  "           ┌ Options: ────────────────┐          Move the snake with:           ",
@@ -695,32 +700,30 @@ mod tests {
                  "                                                                                ",
                  "                                                                                ",
                  "                                                                                ",
-                 "                                                                                ",
-                 "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
             expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
-            expected.set_style(Rect::new(27, 8, 1, 1), consts::KEY_STYLE); // `p`
-            expected.set_style(Rect::new(13, 14, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
-            expected.set_style(Rect::new(27, 17, 1, 1), consts::KEY_STYLE); // `q`
-            expected.set_style(Rect::new(56, 11, 1, 1), consts::KEY_STYLE); // `←`
-            expected.set_style(Rect::new(58, 11, 1, 1), consts::KEY_STYLE); // `↓`
-            expected.set_style(Rect::new(60, 11, 1, 1), consts::KEY_STYLE); // `↑`
-            expected.set_style(Rect::new(62, 11, 1, 1), consts::KEY_STYLE); // `→`
-            expected.set_style(Rect::new(56, 12, 1, 1), consts::KEY_STYLE); // `h`
-            expected.set_style(Rect::new(58, 12, 1, 1), consts::KEY_STYLE); // `j`
-            expected.set_style(Rect::new(60, 12, 1, 1), consts::KEY_STYLE); // `k`
-            expected.set_style(Rect::new(62, 12, 1, 1), consts::KEY_STYLE); // `l`
-            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `a`
-            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `w`
-            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `4`
-            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `2`
-            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `8`
-            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `6`
+            expected.set_style(Rect::new(27, 10, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(13, 16, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
+            expected.set_style(Rect::new(27, 19, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
         }
 
