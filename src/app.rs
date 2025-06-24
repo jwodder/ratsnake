@@ -9,12 +9,8 @@ pub(crate) struct App {
 }
 
 impl App {
-    pub(crate) fn new() -> App {
-        let menu = match Options::load() {
-            Ok(opts) => MainMenu::new(opts),
-            Err(e) => MainMenu::from_load_error(e),
-        };
-        let state = AppState::Main(menu);
+    pub(crate) fn new(opts: Options) -> App {
+        let state = AppState::Main(MainMenu::new(opts));
         App { state }
     }
 
