@@ -33,6 +33,7 @@ pub(crate) struct Game<R = rand::rngs::ThreadRng> {
     state: GameState,
     map: LevelMap,
     options: Options,
+    next_tick: Option<Instant>,
 }
 
 impl Game<rand::rngs::ThreadRng> {
@@ -59,6 +60,7 @@ impl<R: Rng> Game<R> {
             state: GameState::Running,
             map,
             options,
+            next_tick: None,
         };
         for _ in 0..options.fruits.get() {
             game.place_fruit();
@@ -68,18 +70,17 @@ impl<R: Rng> Game<R> {
 
     pub(crate) fn process_input(&mut self) -> std::io::Result<Option<AppState>> {
         if self.running() {
-            let mut wait = consts::TICK_DURATION;
-            loop {
-                let now = Instant::now();
-                if poll(wait)? {
-                    if let st @ Some(_) = self.handle_event(read()?) {
-                        return Ok(st);
-                    }
-                    wait = wait.saturating_sub(now.elapsed());
-                } else {
-                    self.advance();
-                    return Ok(None);
-                }
+            if self.next_tick.is_none() {
+                self.next_tick = Some(Instant::now() + consts::TICK_DURATION);
+            }
+            let when = self.next_tick.expect("next_tick should be Some");
+            let wait = when.saturating_duration_since(Instant::now());
+            if wait.is_zero() || !poll(wait)? {
+                self.advance();
+                self.next_tick = None;
+                Ok(None)
+            } else {
+                Ok(self.handle_event(read()?))
             }
         } else {
             Ok(self.handle_event(read()?))
