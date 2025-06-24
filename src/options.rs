@@ -11,7 +11,7 @@ use serde::{
 use std::fmt;
 use thiserror::Error;
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub(crate) struct Options {
     pub(crate) wraparound: bool,
     pub(crate) obstacles: bool,
@@ -244,7 +244,7 @@ impl Adjustable for bool {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum LevelSize {
     Small,
@@ -314,7 +314,7 @@ impl Adjustable for LevelSize {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct FruitQty(usize);
 
 impl FruitQty {

@@ -6,6 +6,7 @@ use std::path::PathBuf;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) struct Globals {
     pub(crate) options: crate::options::Options,
+    pub(crate) high_scores: crate::highscores::HighScores,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -122,6 +123,14 @@ pub(crate) fn get_display_area(buffer_area: Rect) -> Rect {
     center_rect(buffer_area, consts::DISPLAY_SIZE)
 }
 
+fn data_dir() -> Option<PathBuf> {
+    dirs::data_local_dir().map(|p| p.join("ratsnake"))
+}
+
 pub(crate) fn options_file_path() -> Option<PathBuf> {
-    dirs::data_local_dir().map(|p| p.join("ratsnake").join("options.json"))
+    data_dir().map(|p| p.join("options.json"))
+}
+
+pub(crate) fn high_scores_file_path() -> Option<PathBuf> {
+    data_dir().map(|p| p.join("highscores").join("arcade.json"))
 }
