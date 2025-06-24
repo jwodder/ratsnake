@@ -42,8 +42,11 @@ Main Menu
 
 ![Screenshot of the main menu](screenshots/mainmenu.png)
 
-The main menu allows the user to configure various options for the game of
-Snake before starting a game.  The following options can be set:
+The main menu allows the user to configure various options for Snake before
+starting a game.  The options are saved to a file (See "Data Directory" below)
+that is loaded on program startup and updated before starting a new game.
+
+The following options can be set:
 
 - **Wraparound** — If this option is set, the borders of the game level will
   wrap around so that the snake can pass into one side and come out the
@@ -58,15 +61,6 @@ Snake before starting a game.  The following options can be set:
 
 - **Level Size** — Set the dimensions of the game level, choosing from small
   (38×8), medium (53×12), and large (76×19).
-
-The option configuration is saved to a file before starting a new game and is
-loaded back in on program startup.  The location of this file depends on your
-OS:
-
-- Linux — `~/.local/share/ratsnake/options.json` or
-  `$XDG_DATA_HOME/ratsnake/options.json`
-- macOS — `~/Library/Application Support/ratsnake/options.json`
-- Windows — `%USERPROFILE%\AppData\Local\ratsnake\options.json`
 
 ### Key Bindings
 
@@ -111,6 +105,21 @@ to fill the level with the snake.)  When the game ends, a message is displayed,
 and you can choose to start a new game with the same options (by pressing
 <kbd>r</kbd>), return to the main menu (by pressing <kbd>m</kbd>), or quit the
 program (by pressing <kbd>q</kbd>).
+
+High scores are tracked and saved to a file automatically (See "Data Directory"
+below).  Each combination of game options has its own separate high score.
+Note that quitting a game in the middle of play will not cause a new high score
+to be registered.
+
+Data Directory
+==============
+
+Options and high scores are saved in a data directory in your home folder.  The
+location of this directory depends on your OS:
+
+- Linux — `~/.local/share/ratsnake/` or `$XDG_DATA_HOME/ratsnake/`
+- macOS — `~/Library/Application Support/ratsnake/`
+- Windows — `%USERPROFILE%\AppData\Local\ratsnake\`
 
 Acknowledgements
 ================
