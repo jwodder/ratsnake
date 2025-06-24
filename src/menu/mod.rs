@@ -1,6 +1,6 @@
 mod widgets;
 use self::widgets::{Instructions, Logo};
-use crate::app::AppState;
+use crate::app::Screen;
 use crate::command::Command;
 use crate::consts;
 use crate::game::Game;
@@ -41,14 +41,14 @@ impl MainMenu {
         frame.render_widget(self, frame.area());
     }
 
-    pub(crate) fn process_input(&mut self) -> std::io::Result<Option<AppState>> {
+    pub(crate) fn process_input(&mut self) -> std::io::Result<Option<Screen>> {
         Ok(self.handle_event(read()?))
     }
 
-    fn handle_event(&mut self, event: Event) -> Option<AppState> {
+    fn handle_event(&mut self, event: Event) -> Option<Screen> {
         let cmd = Command::from_key_event(event.as_key_press_event()?)?;
         if cmd == Command::Quit {
-            return Some(AppState::Quit);
+            return Some(Screen::Quit);
         }
         match self.state {
             MenuState::Plain => match (self.selection, cmd) {
@@ -56,7 +56,7 @@ impl MainMenu {
                 (_, Command::End) => self.select(Selection::QuitButton, None),
                 (Selection::PlayButton, Command::Enter) | (_, Command::P) => {
                     match self.options.to_options().save() {
-                        Ok(()) => return Some(AppState::Game(self.play())),
+                        Ok(()) => return Some(Screen::Game(self.play())),
                         Err(e) => self.state = MenuState::SaveWarning(Warning::from(e)),
                     }
                 }
@@ -78,7 +78,7 @@ impl MainMenu {
                 (Selection::Options, Command::Right) => self.options.move_right(),
                 (Selection::Options, Command::Space | Command::Enter) => self.options.toggle(),
                 (Selection::QuitButton, Command::Enter) | (_, Command::Q) => {
-                    return Some(AppState::Quit);
+                    return Some(Screen::Quit);
                 }
                 (Selection::QuitButton, Command::Next) => self.select(Selection::PlayButton, None),
                 (Selection::QuitButton, Command::Up | Command::Prev) => {
@@ -87,8 +87,8 @@ impl MainMenu {
                 _ => (),
             },
             MenuState::SaveWarning(ref mut warning) => match warning.handle_command(cmd)? {
-                WarningOutcome::Dismissed => return Some(AppState::Game(self.play())),
-                WarningOutcome::Quit => return Some(AppState::Quit),
+                WarningOutcome::Dismissed => return Some(Screen::Game(self.play())),
+                WarningOutcome::Quit => return Some(Screen::Quit),
             },
         }
         None
