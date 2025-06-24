@@ -55,6 +55,7 @@ fn main() -> ExitCode {
     }
 }
 
+/// Initialize the terminal, including enabling focus events
 fn init_terminal() -> Result<ratatui::DefaultTerminal, MainError> {
     let terminal = ratatui::try_init().map_err(MainError::Init)?;
     match execute!(io::stdout(), EnableFocusChange) {
@@ -66,6 +67,7 @@ fn init_terminal() -> Result<ratatui::DefaultTerminal, MainError> {
     }
 }
 
+/// Clean up the terminal, undoing the changes made by [`init_terminal()`]
 fn restore_terminal() -> Result<(), MainError> {
     execute!(io::stdout(), DisableFocusChange)
         .and(ratatui::try_restore())
@@ -74,25 +76,27 @@ fn restore_terminal() -> Result<(), MainError> {
 
 #[derive(Debug, Error)]
 enum MainError {
+    /// An error occurred while initializing the terminal
     #[error("failed to set up terminal: {0}")]
     Init(io::Error),
+
+    /// An error occurred inside the application proper
     #[error(transparent)]
     App(io::Error),
+
+    /// An error occurred while cleaning up the terminal
     #[error("failed to clean up terminal: {0}")]
     Restore(io::Error),
 }
 
 impl MainError {
+    /// If the error is not due to a broken pipe, print an error message to
+    /// stderr and return a failure exit code.
     fn report(&self) -> ExitCode {
         if matches!(self, MainError::App(e) if e.kind() == ErrorKind::BrokenPipe) {
             ExitCode::SUCCESS
         } else {
-            let mut stderr = io::stderr().lock();
-            if let Err(err) = writeln!(stderr, "ratsnake: {self}") {
-                if err.kind() == ErrorKind::BrokenPipe {
-                    return ExitCode::SUCCESS;
-                }
-            }
+            let _ = writeln!(io::stderr().lock(), "ratsnake: {self}");
             ExitCode::from(2)
         }
     }
