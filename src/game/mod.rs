@@ -94,9 +94,9 @@ impl<R: Rng> Game<R> {
         game
     }
 
-    /// Handle the next input event.  If the game is currently running and no
-    /// event is received before [`Game::next_tick`] passes, the snake
-    /// advances and the method returns.
+    /// Receive & handle the next input event.  If the game is currently
+    /// running and no event is received before [`Game::next_tick`] passes, the
+    /// snake advances and the method returns.
     ///
     /// Returns `Some(screen)` if the application should switch to a different
     /// screen or quit.

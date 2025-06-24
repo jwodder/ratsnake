@@ -21,39 +21,57 @@ use ratatui::{
     Frame,
 };
 
+/// The main menu/startup screen
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct MainMenu {
+    /// The currently-selected form element
     selection: Selection,
+
+    /// The state of the options sub-menu
     opts_menu: OptionsMenu,
+
+    /// The state that the menu is currently in
     state: MenuState,
+
+    /// Global data (options & high scores)
     globals: Globals,
 }
 
 impl MainMenu {
+    /// Create a new main menu from the given globals
     pub(crate) fn new(globals: Globals) -> Self {
         MainMenu {
             selection: Selection::default(),
             opts_menu: OptionsMenu::new(globals.options),
-            state: MenuState::Plain,
+            state: MenuState::Normal,
             globals,
         }
     }
 
+    /// Draw the main menu on the given frame
     pub(crate) fn draw(&self, frame: &mut Frame<'_>) {
         frame.render_widget(self, frame.area());
     }
 
+    /// Receive & handle the next input event.
+    ///
+    /// Returns `Some(screen)` if the application should switch to a different
+    /// screen or quit.
     pub(crate) fn process_input(&mut self) -> std::io::Result<Option<Screen>> {
         Ok(self.handle_event(read()?))
     }
 
+    /// Handle the given input event.
+    ///
+    /// Returns `Some(screen)` if the application should switch to a different
+    /// screen or quit.
     fn handle_event(&mut self, event: Event) -> Option<Screen> {
         let cmd = Command::from_key_event(event.as_key_press_event()?)?;
         if cmd == Command::Quit {
             return Some(Screen::Quit);
         }
         match self.state {
-            MenuState::Plain => match (self.selection, cmd) {
+            MenuState::Normal => match (self.selection, cmd) {
                 (_, Command::Home) => self.select(Selection::PlayButton, None),
                 (_, Command::End) => self.select(Selection::QuitButton, None),
                 (Selection::PlayButton, Command::Enter) | (_, Command::P) => {
@@ -98,10 +116,15 @@ impl MainMenu {
         None
     }
 
+    /// Create a new game
     fn play(&self) -> Game {
         Game::new(self.globals.clone())
     }
 
+    /// Select the given form element.  If `selection` is
+    /// [`Selection::Options`], the [`OptionsMenu`]'s selection will be set the
+    /// first option (if `first_option` is `Some(true)`), last option (if
+    /// `first_option` is `Some(false)`), or `None`.
     fn select(&mut self, selection: Selection, first_option: Option<bool>) {
         self.selection = selection;
         if selection == Selection::Options {
@@ -186,37 +209,69 @@ impl Widget for &MainMenu {
     }
 }
 
+/// An enum of the states that the main menu can be in
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum MenuState {
-    Plain,
+    /// Normal operation
+    Normal,
+
+    /// A warning is being displayed about failure to save the chosen options
+    /// to a file.
+    ///
+    /// Because options are only saved when the user selects to play a game,
+    /// after this warning is dismissed, the application will transition to a
+    /// new game.
     SaveWarning(Warning),
 }
 
+/// An enum of the form elements
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 enum Selection {
+    /// The "[Play (p)]" button
     #[default]
     PlayButton,
+
+    /// The options sub-menu
     Options,
+
+    /// The "[Quit (q)]" button
     QuitButton,
 }
 
+/// State of the options sub-menu
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct OptionsMenu {
     /// If the currently-selected main menu item is an element of this menu,
     /// then `selection` is `Some(key)`, where `key` is the key of the selected
     /// item within the `OptionsMenu`.
     selection: Option<OptKey>,
+
+    /// Option values currently displayed in the submenu
     settings: EnumMap<OptKey, OptValue>,
 }
 
 impl OptionsMenu {
+    /// The height that should be used for the `Rect` passed to
+    /// `&OptionsMenu::render()`
     #[allow(clippy::cast_possible_truncation)]
     const HEIGHT: u16 = (OptKey::LENGTH as u16) + 2 /* for border */;
-    const HORIZONTAL_PADDING: u16 = 1; // padding on each side
+
+    /// The width of the horizontal padding on each inner side of the menu
+    /// border
+    const HORIZONTAL_PADDING: u16 = 1;
+
+    /// The number of total display column cells used by the menu pointer
     const POINTER_WIDTH: u16 = 2;
+
+    /// The number of display column cells between the option names and values
     const LABEL_VALUE_GUTTER: u16 = 2;
+
+    /// The width that should be used for the `Rect` passed to
+    /// `&OptionsMenu::render()`
     const WIDTH: u16 = 2 /* for border */ + 2 * Self::HORIZONTAL_PADDING + Self::POINTER_WIDTH + OptKey::DISPLAY_WIDTH + Self::LABEL_VALUE_GUTTER + OptValue::DISPLAY_WIDTH;
 
+    /// Create a new `OptionsMenu` with the given `Options` as the initial
+    /// values
     fn new(options: Options) -> Self {
         let settings = EnumMap::from_iter(OptKey::iter().map(|key| (key, options.get(key))));
         OptionsMenu {
@@ -225,6 +280,7 @@ impl OptionsMenu {
         }
     }
 
+    /// Return the `Options` currently selected in the menu
     fn to_options(&self) -> Options {
         let mut opts = Options::default();
         for key in OptKey::iter() {
@@ -233,28 +289,37 @@ impl OptionsMenu {
         opts
     }
 
+    /// Select the previous option in the submenu.  If there is no previous
+    /// item, return the form item to move the selection to instead.
     fn move_up(&mut self) -> Option<Selection> {
         self.selection = self.selection?.prev();
         self.selection.is_none().then_some(Selection::PlayButton)
     }
 
+    /// Select the next option in the submenu.  If there is no next item,
+    /// return the form item to move the selection to instead.
     fn move_down(&mut self) -> Option<Selection> {
         self.selection = self.selection?.next();
         self.selection.is_none().then_some(Selection::QuitButton)
     }
 
+    /// Respond to a "Left" input by decreasing or unsetting the current
+    /// option, if possible
     fn move_left(&mut self) {
         if let Some(sel) = self.selection {
             self.settings[sel].decrease();
         }
     }
 
+    /// Respond to a "Right" input by increasing or setting the current
+    /// option, if possible
     fn move_right(&mut self) {
         if let Some(sel) = self.selection {
             self.settings[sel].increase();
         }
     }
 
+    /// Toggle the current option, if possible
     fn toggle(&mut self) {
         if let Some(sel) = self.selection {
             self.settings[sel].toggle();

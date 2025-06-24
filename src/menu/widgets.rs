@@ -6,18 +6,35 @@ use ratatui::{
     widgets::Widget,
 };
 
+/// A widget for drawing the `ratsnake` logo
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct Logo;
 
 impl Logo {
+    /// The width of the "Rat" portion
     const RAT_WIDTH: u16 = 15;
+
+    /// The width of the "Snake" portion
     const SNAKE_WIDTH: u16 = 28;
-    const SNAKE_BODY_LENGTH: u16 = 12;
-    const SNAKE_FRUIT_GUTTER: u16 = 2;
+
+    /// The height of the "`RatSnake`" text
     const TEXT_HEIGHT: u16 = 5;
+
+    /// The body length of the snake
+    const SNAKE_BODY_LENGTH: u16 = 12;
+
+    /// The number of spaces between the snake and the fruit
+    const SNAKE_FRUIT_GUTTER: u16 = 2;
+
+    /// The height that should be used for the `Rect` passed to
+    /// `Logo::render()`
     pub(super) const HEIGHT: u16 = Self::TEXT_HEIGHT + 2;
+
+    /// The width that should be used for the `Rect` passed to
+    /// `Logo::render()`
     pub(super) const WIDTH: u16 = Self::RAT_WIDTH + Self::SNAKE_WIDTH;
 
+    /// The content of the "Rat" portion
     #[rustfmt::skip]
     const RAT: [&'static str; Self::TEXT_HEIGHT as usize] = [
          " ____       _  ",
@@ -27,6 +44,7 @@ impl Logo {
         r"|_| \_\__,_|\__",
     ];
 
+    /// The content of the "Snake" portion
     #[rustfmt::skip]
     const SNAKE: [&'static str; Self::TEXT_HEIGHT as usize] = [
          " ____              _        ",
@@ -84,11 +102,17 @@ impl Widget for Logo {
     }
 }
 
+/// A widget for drawing the game instructions
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct Instructions;
 
 impl Instructions {
+    /// The height that should be used for the `Rect` passed to
+    /// `Instructions::render()`
     pub(super) const HEIGHT: u16 = 7;
+
+    /// The width that should be used for the `Rect` passed to
+    /// `Instructions::render()`
     pub(super) const WIDTH: u16 = 20;
 }
 

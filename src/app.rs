@@ -40,7 +40,7 @@ impl App {
         Ok(())
     }
 
-    /// Handle the next input event or lack thereof
+    /// Receive & handle the next input event or lack thereof
     fn process_input(&mut self) -> std::io::Result<()> {
         match self.screen {
             Screen::Main(ref mut menu) => {
