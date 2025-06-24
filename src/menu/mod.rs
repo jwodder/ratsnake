@@ -11,7 +11,7 @@ use crossterm::event::{read, Event};
 use enum_map::{Enum, EnumMap};
 use ratatui::{
     buffer::Buffer,
-    layout::{Flex, Layout, Rect},
+    layout::{Constraint, Flex, Layout, Rect},
     style::Style,
     text::{Line, Span},
     widgets::{
@@ -121,27 +121,28 @@ impl MainMenu {
 impl Widget for &MainMenu {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let display = get_display_area(area);
-        let [logo_area, instructions_area, play_area, options_area, quit_area] =
-            Layout::vertical([
-                Logo::HEIGHT,
-                Instructions::HEIGHT,
-                1,
-                OptionsMenu::HEIGHT,
-                1,
-            ])
-            .flex(Flex::Start)
-            .spacing(1)
-            .areas(display);
+        let [logo_area, main_area] =
+            Layout::vertical([Constraint::Length(Logo::HEIGHT), Constraint::Fill(1)])
+                .spacing(1)
+                .areas(display);
 
         let [logo_area] = Layout::horizontal([Logo::WIDTH])
             .flex(Flex::Center)
             .areas(logo_area);
         Logo.render(logo_area, buf);
 
-        let [instructions_area] = Layout::horizontal([Instructions::WIDTH])
-            .flex(Flex::Center)
-            .areas(instructions_area);
-        Instructions.render(instructions_area, buf);
+        let [main_area] = Layout::vertical([OptionsMenu::HEIGHT + 4])
+            .flex(Flex::Start)
+            .areas(main_area);
+        let [form_area, instructions_area] =
+            Layout::horizontal([OptionsMenu::WIDTH, Instructions::WIDTH])
+                .flex(Flex::SpaceAround)
+                .areas(main_area);
+
+        let [play_area, options_area, quit_area] = Layout::vertical([1, OptionsMenu::HEIGHT, 1])
+            .flex(Flex::Start)
+            .spacing(1)
+            .areas(form_area);
 
         let play_style = if self.selection == Selection::PlayButton {
             consts::MENU_SELECTION_STYLE
@@ -173,6 +174,11 @@ impl Widget for &MainMenu {
         ])
         .centered()
         .render(quit_area, buf);
+
+        let [instructions_area] = Layout::vertical([Instructions::HEIGHT])
+            .flex(Flex::Center)
+            .areas(instructions_area);
+        Instructions.render(instructions_area, buf);
 
         if let MenuState::SaveWarning(warning) = &self.state {
             warning.render(display, buf);
@@ -301,53 +307,56 @@ mod tests {
             let area = Rect::new(0, 0, 80, 24);
             let mut buffer = Buffer::empty(area);
             menu.render(area, &mut buffer);
+            #[rustfmt::skip]
             let mut expected = Buffer::with_lines([
-                "                    ____       _   ____              _                          ",
+                 "                    ____       _   ____              _                          ",
                 r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
                 r"                   | |_) / _` | __\___ \| '_ \ / _` | |/ / _ \                  ",
-                "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
+                 "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
                 r"                   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|                  ",
-                "                                                                                ",
-                "                              Move the snake with:                              ",
-                "                                     ← ↓ ↑ →                                    ",
-                "                                 or: h j k l                                    ",
-                "                                 or: a s w d                                    ",
-                "                                 or: 4 2 8 6                                    ",
-                "                              Eat the fruit, but                                ",
-                "                              don't hit yourself!                               ",
-                "                                                                                ",
-                "                                   [Play (p)]                                   ",
-                "                                                                                ",
-                "                          ┌ Options: ────────────────┐                          ",
-                "                          │   Wraparound     [ ]     │                          ",
-                "                          │   Obstacles      [ ]     │                          ",
-                "                          │   Fruits      ◁   1    ▶ │                          ",
-                "                          │   Level Size  ◀ Large  ▷ │                          ",
-                "                          └──────────────────────────┘                          ",
-                "                                                                                ",
-                "                                   [Quit (q)]                                   ",
+                 "                                                                                ",
+                 "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
+                 "                                                                                ",
+                 "                    [Play (p)]                                                  ",
+                 "                                                                                ",
+                 "           ┌ Options: ────────────────┐          Move the snake with:           ",
+                 "           │   Wraparound     [ ]     │                 ← ↓ ↑ →                 ",
+                 "           │   Obstacles      [ ]     │             or: h j k l                 ",
+                 "           │   Fruits      ◁   1    ▶ │             or: a s w d                 ",
+                 "           │   Level Size  ◀ Large  ▷ │             or: 4 2 8 6                 ",
+                 "           └──────────────────────────┘          Eat the fruit, but             ",
+                 "                                                 don't hit yourself!            ",
+                 "                    [Quit (q)]                                                  ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
             ]);
-            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
-            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
-            expected.set_style(Rect::new(37, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(42, 14, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(35, 14, 10, 1), consts::MENU_SELECTION_STYLE);
-            expected.set_style(Rect::new(42, 23, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
+            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
+            expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
+            expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
+            expected.set_style(Rect::new(27, 8, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(20, 8, 10, 1), consts::MENU_SELECTION_STYLE); // Play button
+            expected.set_style(Rect::new(27, 17, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 11, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 11, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 11, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 11, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 12, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 12, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 12, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 12, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
         }
 
@@ -360,53 +369,56 @@ mod tests {
                 .is_none());
             let mut buffer = Buffer::empty(area);
             menu.render(area, &mut buffer);
+            #[rustfmt::skip]
             let mut expected = Buffer::with_lines([
-                "                    ____       _   ____              _                          ",
+                 "                    ____       _   ____              _                          ",
                 r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
                 r"                   | |_) / _` | __\___ \| '_ \ / _` | |/ / _ \                  ",
-                "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
+                 "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
                 r"                   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|                  ",
-                "                                                                                ",
-                "                              Move the snake with:                              ",
-                "                                     ← ↓ ↑ →                                    ",
-                "                                 or: h j k l                                    ",
-                "                                 or: a s w d                                    ",
-                "                                 or: 4 2 8 6                                    ",
-                "                              Eat the fruit, but                                ",
-                "                              don't hit yourself!                               ",
-                "                                                                                ",
-                "                                   [Play (p)]                                   ",
-                "                                                                                ",
-                "                          ┌ Options: ────────────────┐                          ",
-                "                          │ » Wraparound     [ ]     │                          ",
-                "                          │   Obstacles      [ ]     │                          ",
-                "                          │   Fruits      ◁   1    ▶ │                          ",
-                "                          │   Level Size  ◀ Large  ▷ │                          ",
-                "                          └──────────────────────────┘                          ",
-                "                                                                                ",
-                "                                   [Quit (q)]                                   ",
+                 "                                                                                ",
+                 "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
+                 "                                                                                ",
+                 "                    [Play (p)]                                                  ",
+                 "                                                                                ",
+                 "           ┌ Options: ────────────────┐          Move the snake with:           ",
+                 "           │ » Wraparound     [ ]     │                 ← ↓ ↑ →                 ",
+                 "           │   Obstacles      [ ]     │             or: h j k l                 ",
+                 "           │   Fruits      ◁   1    ▶ │             or: a s w d                 ",
+                 "           │   Level Size  ◀ Large  ▷ │             or: 4 2 8 6                 ",
+                 "           └──────────────────────────┘          Eat the fruit, but             ",
+                 "                                                 don't hit yourself!            ",
+                 "                    [Quit (q)]                                                  ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
             ]);
-            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
-            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
-            expected.set_style(Rect::new(37, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(42, 14, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(28, 17, 24, 1), consts::MENU_SELECTION_STYLE);
-            expected.set_style(Rect::new(42, 23, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
+            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
+            expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
+            expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
+            expected.set_style(Rect::new(27, 8, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(13, 11, 24, 1), consts::MENU_SELECTION_STYLE); // "Wraparound" option
+            expected.set_style(Rect::new(27, 17, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 11, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 11, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 11, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 11, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 12, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 12, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 12, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 12, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -414,53 +426,56 @@ mod tests {
                 .is_none());
             let mut buffer = Buffer::empty(area);
             menu.render(area, &mut buffer);
+            #[rustfmt::skip]
             let mut expected = Buffer::with_lines([
-                "                    ____       _   ____              _                          ",
+                 "                    ____       _   ____              _                          ",
                 r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
                 r"                   | |_) / _` | __\___ \| '_ \ / _` | |/ / _ \                  ",
-                "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
+                 "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
                 r"                   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|                  ",
-                "                                                                                ",
-                "                              Move the snake with:                              ",
-                "                                     ← ↓ ↑ →                                    ",
-                "                                 or: h j k l                                    ",
-                "                                 or: a s w d                                    ",
-                "                                 or: 4 2 8 6                                    ",
-                "                              Eat the fruit, but                                ",
-                "                              don't hit yourself!                               ",
-                "                                                                                ",
-                "                                   [Play (p)]                                   ",
-                "                                                                                ",
-                "                          ┌ Options: ────────────────┐                          ",
-                "                          │ » Wraparound     [✓]     │                          ",
-                "                          │   Obstacles      [ ]     │                          ",
-                "                          │   Fruits      ◁   1    ▶ │                          ",
-                "                          │   Level Size  ◀ Large  ▷ │                          ",
-                "                          └──────────────────────────┘                          ",
-                "                                                                                ",
-                "                                   [Quit (q)]                                   ",
+                 "                                                                                ",
+                 "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
+                 "                                                                                ",
+                 "                    [Play (p)]                                                  ",
+                 "                                                                                ",
+                 "           ┌ Options: ────────────────┐          Move the snake with:           ",
+                 "           │ » Wraparound     [✓]     │                 ← ↓ ↑ →                 ",
+                 "           │   Obstacles      [ ]     │             or: h j k l                 ",
+                 "           │   Fruits      ◁   1    ▶ │             or: a s w d                 ",
+                 "           │   Level Size  ◀ Large  ▷ │             or: 4 2 8 6                 ",
+                 "           └──────────────────────────┘          Eat the fruit, but             ",
+                 "                                                 don't hit yourself!            ",
+                 "                    [Quit (q)]                                                  ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
             ]);
-            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
-            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
-            expected.set_style(Rect::new(28, 17, 24, 1), consts::MENU_SELECTION_STYLE);
-            expected.set_style(Rect::new(37, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(42, 14, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(42, 23, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
+            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
+            expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
+            expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
+            expected.set_style(Rect::new(27, 8, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(13, 11, 24, 1), consts::MENU_SELECTION_STYLE); // "Wraparound" option
+            expected.set_style(Rect::new(27, 17, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 11, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 11, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 11, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 11, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 12, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 12, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 12, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 12, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -477,53 +492,56 @@ mod tests {
                 .is_none());
             let mut buffer = Buffer::empty(area);
             menu.render(area, &mut buffer);
+            #[rustfmt::skip]
             let mut expected = Buffer::with_lines([
-                "                    ____       _   ____              _                          ",
+                 "                    ____       _   ____              _                          ",
                 r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
                 r"                   | |_) / _` | __\___ \| '_ \ / _` | |/ / _ \                  ",
-                "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
+                 "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
                 r"                   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|                  ",
-                "                                                                                ",
-                "                              Move the snake with:                              ",
-                "                                     ← ↓ ↑ →                                    ",
-                "                                 or: h j k l                                    ",
-                "                                 or: a s w d                                    ",
-                "                                 or: 4 2 8 6                                    ",
-                "                              Eat the fruit, but                                ",
-                "                              don't hit yourself!                               ",
-                "                                                                                ",
-                "                                   [Play (p)]                                   ",
-                "                                                                                ",
-                "                          ┌ Options: ────────────────┐                          ",
-                "                          │   Wraparound     [✓]     │                          ",
-                "                          │   Obstacles      [ ]     │                          ",
-                "                          │   Fruits      ◁   1    ▶ │                          ",
-                "                          │ » Level Size  ◀ Large  ▷ │                          ",
-                "                          └──────────────────────────┘                          ",
-                "                                                                                ",
-                "                                   [Quit (q)]                                   ",
+                 "                                                                                ",
+                 "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
+                 "                                                                                ",
+                 "                    [Play (p)]                                                  ",
+                 "                                                                                ",
+                 "           ┌ Options: ────────────────┐          Move the snake with:           ",
+                 "           │   Wraparound     [✓]     │                 ← ↓ ↑ →                 ",
+                 "           │   Obstacles      [ ]     │             or: h j k l                 ",
+                 "           │   Fruits      ◁   1    ▶ │             or: a s w d                 ",
+                 "           │ » Level Size  ◀ Large  ▷ │             or: 4 2 8 6                 ",
+                 "           └──────────────────────────┘          Eat the fruit, but             ",
+                 "                                                 don't hit yourself!            ",
+                 "                    [Quit (q)]                                                  ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
             ]);
-            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
-            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
-            expected.set_style(Rect::new(37, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(42, 14, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(28, 20, 24, 1), consts::MENU_SELECTION_STYLE);
-            expected.set_style(Rect::new(42, 23, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
+            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
+            expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
+            expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
+            expected.set_style(Rect::new(27, 8, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(13, 14, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
+            expected.set_style(Rect::new(27, 17, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 11, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 11, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 11, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 11, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 12, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 12, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 12, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 12, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -531,53 +549,56 @@ mod tests {
                 .is_none());
             let mut buffer = Buffer::empty(area);
             menu.render(area, &mut buffer);
+            #[rustfmt::skip]
             let mut expected = Buffer::with_lines([
-                "                    ____       _   ____              _                          ",
+                 "                    ____       _   ____              _                          ",
                 r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
                 r"                   | |_) / _` | __\___ \| '_ \ / _` | |/ / _ \                  ",
-                "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
+                 "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
                 r"                   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|                  ",
-                "                                                                                ",
-                "                              Move the snake with:                              ",
-                "                                     ← ↓ ↑ →                                    ",
-                "                                 or: h j k l                                    ",
-                "                                 or: a s w d                                    ",
-                "                                 or: 4 2 8 6                                    ",
-                "                              Eat the fruit, but                                ",
-                "                              don't hit yourself!                               ",
-                "                                                                                ",
-                "                                   [Play (p)]                                   ",
-                "                                                                                ",
-                "                          ┌ Options: ────────────────┐                          ",
-                "                          │   Wraparound     [✓]     │                          ",
-                "                          │   Obstacles      [ ]     │                          ",
-                "                          │   Fruits      ◁   1    ▶ │                          ",
-                "                          │ » Level Size  ◀ Medium ▶ │                          ",
-                "                          └──────────────────────────┘                          ",
-                "                                                                                ",
-                "                                   [Quit (q)]                                   ",
+                 "                                                                                ",
+                 "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
+                 "                                                                                ",
+                 "                    [Play (p)]                                                  ",
+                 "                                                                                ",
+                 "           ┌ Options: ────────────────┐          Move the snake with:           ",
+                 "           │   Wraparound     [✓]     │                 ← ↓ ↑ →                 ",
+                 "           │   Obstacles      [ ]     │             or: h j k l                 ",
+                 "           │   Fruits      ◁   1    ▶ │             or: a s w d                 ",
+                 "           │ » Level Size  ◀ Medium ▶ │             or: 4 2 8 6                 ",
+                 "           └──────────────────────────┘          Eat the fruit, but             ",
+                 "                                                 don't hit yourself!            ",
+                 "                    [Quit (q)]                                                  ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
             ]);
-            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
-            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
-            expected.set_style(Rect::new(37, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(42, 14, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(28, 20, 24, 1), consts::MENU_SELECTION_STYLE);
-            expected.set_style(Rect::new(42, 23, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
+            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
+            expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
+            expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
+            expected.set_style(Rect::new(27, 8, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(13, 14, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
+            expected.set_style(Rect::new(27, 17, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 11, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 11, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 11, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 11, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 12, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 12, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 12, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 12, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -585,53 +606,56 @@ mod tests {
                 .is_none());
             let mut buffer = Buffer::empty(area);
             menu.render(area, &mut buffer);
+            #[rustfmt::skip]
             let mut expected = Buffer::with_lines([
-                "                    ____       _   ____              _                          ",
+                 "                    ____       _   ____              _                          ",
                 r"                   |  _ \ __ _| |_/ ___| _ __   __ _| | _____                   ",
                 r"                   | |_) / _` | __\___ \| '_ \ / _` | |/ / _ \                  ",
-                "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
+                 "                   |  _ < (_| | |_ ___) | | | | (_| |   <  __/                  ",
                 r"                   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|                  ",
-                "                                                                                ",
-                "                              Move the snake with:                              ",
-                "                                     ← ↓ ↑ →                                    ",
-                "                                 or: h j k l                                    ",
-                "                                 or: a s w d                                    ",
-                "                                 or: 4 2 8 6                                    ",
-                "                              Eat the fruit, but                                ",
-                "                              don't hit yourself!                               ",
-                "                                                                                ",
-                "                                   [Play (p)]                                   ",
-                "                                                                                ",
-                "                          ┌ Options: ────────────────┐                          ",
-                "                          │   Wraparound     [✓]     │                          ",
-                "                          │   Obstacles      [ ]     │                          ",
-                "                          │   Fruits      ◁   1    ▶ │                          ",
-                "                          │ » Level Size  ◁ Small  ▶ │                          ",
-                "                          └──────────────────────────┘                          ",
-                "                                                                                ",
-                "                                   [Quit (q)]                                   ",
+                 "                                                                                ",
+                 "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
+                 "                                                                                ",
+                 "                    [Play (p)]                                                  ",
+                 "                                                                                ",
+                 "           ┌ Options: ────────────────┐          Move the snake with:           ",
+                 "           │   Wraparound     [✓]     │                 ← ↓ ↑ →                 ",
+                 "           │   Obstacles      [ ]     │             or: h j k l                 ",
+                 "           │   Fruits      ◁   1    ▶ │             or: a s w d                 ",
+                 "           │ » Level Size  ◁ Small  ▶ │             or: 4 2 8 6                 ",
+                 "           └──────────────────────────┘          Eat the fruit, but             ",
+                 "                                                 don't hit yourself!            ",
+                 "                    [Quit (q)]                                                  ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
+                 "                                                                                ",
             ]);
-            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
-            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
-            expected.set_style(Rect::new(37, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 7, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 8, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(37, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(39, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(41, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(43, 10, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(42, 14, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(28, 20, 24, 1), consts::MENU_SELECTION_STYLE);
-            expected.set_style(Rect::new(42, 23, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
+            expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
+            expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
+            expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
+            expected.set_style(Rect::new(27, 8, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(13, 14, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
+            expected.set_style(Rect::new(27, 17, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 11, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 11, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 11, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 11, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 12, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 12, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 12, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 12, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
         }
 

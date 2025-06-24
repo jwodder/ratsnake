@@ -1,7 +1,7 @@
 use crate::consts;
 use ratatui::{
     buffer::Buffer,
-    layout::{Offset, Rect},
+    layout::{Constraint, Flex, Layout, Rect},
     text::{Line, Span, Text},
     widgets::Widget,
 };
@@ -12,11 +12,14 @@ pub(super) struct Logo;
 impl Logo {
     const RAT_WIDTH: u16 = 15;
     const SNAKE_WIDTH: u16 = 28;
-    pub(super) const HEIGHT: u16 = 5;
+    const SNAKE_BODY_LENGTH: u16 = 12;
+    const SNAKE_FRUIT_GUTTER: u16 = 2;
+    const TEXT_HEIGHT: u16 = 5;
+    pub(super) const HEIGHT: u16 = Self::TEXT_HEIGHT + 2;
     pub(super) const WIDTH: u16 = Self::RAT_WIDTH + Self::SNAKE_WIDTH;
 
     #[rustfmt::skip]
-    const RAT: [&'static str; Self::HEIGHT as usize] = [
+    const RAT: [&'static str; Self::TEXT_HEIGHT as usize] = [
          " ____       _  ",
         r"|  _ \ __ _| |_",
          "| |_) / _` | __",
@@ -25,7 +28,7 @@ impl Logo {
     ];
 
     #[rustfmt::skip]
-    const SNAKE: [&'static str; Self::HEIGHT as usize] = [
+    const SNAKE: [&'static str; Self::TEXT_HEIGHT as usize] = [
          " ____              _        ",
          "/ ___| _ __   __ _| | _____ ",
         r"\___ \| '_ \ / _` | |/ / _ \",
@@ -36,16 +39,48 @@ impl Logo {
 
 impl Widget for Logo {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let rat_text = Text::from_iter(Self::RAT).style(consts::FRUIT_STYLE);
-        rat_text.render(area, buf);
-        let snake_text = Text::from_iter(Self::SNAKE).style(consts::SNAKE_STYLE);
-        let snake_area = area
-            .offset(Offset {
-                x: Self::RAT_WIDTH.into(),
-                y: 0,
-            })
-            .intersection(area);
-        snake_text.render(snake_area, buf);
+        let [area] = Layout::horizontal([Self::WIDTH])
+            .flex(Flex::Start)
+            .areas(area);
+        let [words_area, diagram_area] = Layout::vertical([Self::TEXT_HEIGHT, 1])
+            .flex(Flex::Start)
+            .spacing(1)
+            .areas(area);
+        let [rat_area, snake_area] = Layout::horizontal([Self::RAT_WIDTH, Self::SNAKE_WIDTH])
+            .flex(Flex::Start)
+            .areas(words_area);
+        Text::from_iter(Self::RAT)
+            .style(consts::FRUIT_STYLE)
+            .render(rat_area, buf);
+        Text::from_iter(Self::SNAKE)
+            .style(consts::SNAKE_STYLE)
+            .render(snake_area, buf);
+        let [body_area, head_area, _, fruit_area] = Layout::horizontal([
+            Constraint::Length(Self::SNAKE_BODY_LENGTH),
+            Constraint::Length(1),
+            Constraint::Length(Self::SNAKE_FRUIT_GUTTER),
+            Constraint::Length(1),
+        ])
+        .flex(Flex::Center)
+        .areas(diagram_area);
+        for p in body_area.positions() {
+            if let Some(cell) = buf.cell_mut(p) {
+                cell.set_char(consts::SNAKE_BODY_SYMBOL);
+                cell.set_style(consts::SNAKE_STYLE);
+            }
+        }
+        for p in head_area.positions() {
+            if let Some(cell) = buf.cell_mut(p) {
+                cell.set_char(consts::SNAKE_HEAD_EAST_SYMBOL);
+                cell.set_style(consts::SNAKE_STYLE);
+            }
+        }
+        for p in fruit_area.positions() {
+            if let Some(cell) = buf.cell_mut(p) {
+                cell.set_char(consts::FRUIT_SYMBOL);
+                cell.set_style(consts::FRUIT_STYLE);
+            }
+        }
     }
 }
 
@@ -128,42 +163,48 @@ mod tests {
         #[test]
         fn test_render() {
             let mut buffer = Buffer::empty(Rect::new(0, 0, 50, 10));
-            Logo.render(Rect::new(3, 2, 50, 10), &mut buffer);
+            Logo.render(Rect::new(3, 1, Logo::WIDTH, Logo::HEIGHT), &mut buffer);
+            #[rustfmt::skip]
             let mut expected = Buffer::with_lines([
-                "",
-                "",
-                "    ____       _   ____              _            ",
-                "   |  _ \\ __ _| |_/ ___| _ __   __ _| | _____     ",
-                "   | |_) / _` | __\\___ \\| '_ \\ / _` | |/ / _ \\    ",
-                "   |  _ < (_| | |_ ___) | | | | (_| |   <  __/    ",
-                "   |_| \\_\\__,_|\\__|____/|_| |_|\\__,_|_|\\_\\___|    ",
-                "",
-                "",
-                "",
+                 "",
+                 "    ____       _   ____              _            ",
+                r"   |  _ \ __ _| |_/ ___| _ __   __ _| | _____     ",
+                r"   | |_) / _` | __\___ \| '_ \ / _` | |/ / _ \    ",
+                 "   |  _ < (_| | |_ ___) | | | | (_| |   <  __/    ",
+                r"   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|    ",
+                 "",
+                 "                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                 ",
+                 "",
+                 "",
             ]);
-            expected.set_style(Rect::new(3, 2, 15, 8), consts::FRUIT_STYLE);
-            expected.set_style(Rect::new(18, 2, 32, 8), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(3, 1, 15, 5), consts::FRUIT_STYLE);
+            expected.set_style(Rect::new(18, 1, 28, 5), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(17, 7, 13, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(32, 7, 1, 1), consts::FRUIT_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
         }
 
         #[test]
-        fn test_render_too_small() {
+        fn test_render_too_big() {
             let mut buffer = Buffer::empty(Rect::new(0, 0, 50, 10));
-            Logo.render(Rect::new(3, 2, 40, 3), &mut buffer);
+            Logo.render(Rect::new(3, 1, 50, 10), &mut buffer);
+            #[rustfmt::skip]
             let mut expected = Buffer::with_lines([
-                "",
-                "",
-                "    ____       _   ____              _            ",
-                "   |  _ \\ __ _| |_/ ___| _ __   __ _| | ___       ",
-                "   | |_) / _` | __\\___ \\| '_ \\ / _` | |/ /        ",
-                "",
-                "",
-                "",
-                "",
-                "",
+                 "",
+                 "    ____       _   ____              _            ",
+                r"   |  _ \ __ _| |_/ ___| _ __   __ _| | _____     ",
+                r"   | |_) / _` | __\___ \| '_ \ / _` | |/ / _ \    ",
+                 "   |  _ < (_| | |_ ___) | | | | (_| |   <  __/    ",
+                r"   |_| \_\__,_|\__|____/|_| |_|\__,_|_|\_\___|    ",
+                 "",
+                 "                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                 ",
+                 "",
+                 "",
             ]);
-            expected.set_style(Rect::new(3, 2, 15, 3), consts::FRUIT_STYLE);
-            expected.set_style(Rect::new(18, 2, 25, 3), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(3, 1, 15, 5), consts::FRUIT_STYLE);
+            expected.set_style(Rect::new(18, 1, 28, 5), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(17, 7, 13, 1), consts::SNAKE_STYLE);
+            expected.set_style(Rect::new(32, 7, 1, 1), consts::FRUIT_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
         }
 
