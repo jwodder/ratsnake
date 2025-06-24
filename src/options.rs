@@ -1,5 +1,5 @@
 use crate::consts;
-use crate::util::options_file_path;
+use crate::util::{options_file_path, Bounds};
 use enum_dispatch::enum_dispatch;
 use enum_map::Enum;
 use ratatui::layout::Size;
@@ -73,6 +73,10 @@ impl Options {
                     .expect("Options::set(LevelSize, value) called with non-LevelSize value");
             }
         }
+    }
+
+    pub(crate) fn level_bounds(&self) -> Bounds {
+        Bounds::new(self.level_size.as_size(), self.wraparound)
     }
 }
 

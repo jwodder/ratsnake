@@ -1,6 +1,6 @@
 use super::direction::Direction;
-use super::levels::Bounds;
 use crate::consts;
+use crate::util::Bounds;
 use ratatui::layout::Position;
 use std::collections::VecDeque;
 

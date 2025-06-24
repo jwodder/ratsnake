@@ -3,7 +3,7 @@ mod levels;
 mod paused;
 mod snake;
 use self::direction::Direction;
-use self::levels::{Bounds, LevelMap};
+use self::levels::LevelMap;
 use self::paused::{PauseOpt, Paused};
 use self::snake::Snake;
 use crate::app::Screen;
@@ -43,10 +43,7 @@ impl Game<rand::rngs::ThreadRng> {
 
 impl<R: Rng> Game<R> {
     pub(crate) fn new_with_rng(globals: Globals, mut rng: R) -> Game<R> {
-        let mut map = LevelMap::new(Bounds::from((
-            globals.options.level_size.as_size(),
-            globals.options.wraparound,
-        )));
+        let mut map = LevelMap::new(globals.options.level_bounds());
         if globals.options.obstacles {
             map.set_obstacles(&mut rng);
         }
