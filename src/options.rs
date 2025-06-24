@@ -11,15 +11,30 @@ use serde::{
 use std::fmt;
 use thiserror::Error;
 
+/// Gameplay options
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub(crate) struct Options {
+    /// Should levels wrap around at the borders?
     pub(crate) wraparound: bool,
+
+    /// Should randomly-generated obstacles be placed in levels?
     pub(crate) obstacles: bool,
+
+    /// Number of fruits present in a level at one time
     pub(crate) fruits: FruitQty,
+
+    /// Size of levels
     pub(crate) level_size: LevelSize,
 }
 
 impl Options {
+    /// Save the options to a file on disk
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if the data directory path could not be determined, if
+    /// creating the file's parent directories failed, if serializing the
+    /// options failed, or if writing the serialized options failed.
     pub(crate) fn save(&self) -> Result<(), SaveError> {
         let path = options_file_path().ok_or_else(SaveError::no_path)?;
         if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
@@ -31,6 +46,14 @@ impl Options {
         Ok(())
     }
 
+    /// Read options from a file on disk.  If the file does not exist, a
+    /// default `Options` value is returned.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if the data directory path could not be determined, if
+    /// the file could not be read, or if the file's contents could not be
+    /// deserialized.
     pub(crate) fn load() -> Result<Options, LoadError> {
         let path = options_file_path().ok_or_else(LoadError::no_path)?;
         let src = match fs_err::read(&path) {
@@ -41,6 +64,7 @@ impl Options {
         serde_json::from_slice(&src).map_err(LoadError::deserialize)
     }
 
+    /// Retrieve the value of the given option as an [`OptValue`]
     pub(crate) fn get(&self, key: OptKey) -> OptValue {
         match key {
             OptKey::Wraparound => self.wraparound.into(),
@@ -50,6 +74,12 @@ impl Options {
         }
     }
 
+    /// Set the value of the option `key` to `value`
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `value` variant is not the one that the value of `key`
+    /// requires
     pub(crate) fn set(&mut self, key: OptKey, value: OptValue) {
         match key {
             OptKey::Wraparound => {
@@ -75,11 +105,13 @@ impl Options {
         }
     }
 
+    /// Return level bounds as configured by the options
     pub(crate) fn level_bounds(&self) -> Bounds {
         Bounds::new(self.level_size.as_size(), self.wraparound)
     }
 }
 
+/// Error returned by [`Options::save()`]
 #[derive(Debug, Error)]
 #[error("Failed to save options to disk")]
 pub(crate) struct SaveError(#[source] SaveErrorSource);
@@ -102,6 +134,19 @@ impl SaveError {
     }
 }
 
+/// Source error of [`SaveError`].
+///
+/// Implementing this as separate type allows for error displays like the
+/// following, with a general message at the top level and a source message
+/// describing which part of the operation failed:
+///
+/// ```text
+/// Failed to save options to disk
+///
+/// Caused by:
+///     0: failed to create parent directories
+///     1: permission denied
+/// ```
 #[derive(Debug, Error)]
 enum SaveErrorSource {
     #[error("failed to determine path to local data directory")]
@@ -114,8 +159,9 @@ enum SaveErrorSource {
     Write(#[source] std::io::Error),
 }
 
+/// Error returned by [`Options::load()`]
 #[derive(Debug, Error)]
-#[error("Failed to read options from disk")]
+#[error("Failed to load options from disk")]
 pub(crate) struct LoadError(#[source] LoadErrorSource);
 
 impl LoadError {
@@ -132,6 +178,19 @@ impl LoadError {
     }
 }
 
+/// Source error of [`LoadError`].
+///
+/// Implementing this as separate type allows for error displays like the
+/// following, with a general message at the top level and a source message
+/// describing which part of the operation failed:
+///
+/// ```text
+/// Failed to load options from disk
+///
+/// Caused by:
+///     0: failed to read options file
+///     1: permission denied
+/// ```
 #[derive(Debug, Error)]
 enum LoadErrorSource {
     #[error("failed to determine path to local data directory")]
@@ -142,6 +201,7 @@ enum LoadErrorSource {
     Deserialize(#[source] serde_json::Error),
 }
 
+/// An enum of the individual option fields in [`Options`]
 #[derive(Clone, Copy, Debug, Enum, Eq, PartialEq)]
 pub(crate) enum OptKey {
     Wraparound,
@@ -151,8 +211,11 @@ pub(crate) enum OptKey {
 }
 
 impl OptKey {
+    /// The maximum display column width of `opt_key.to_string()` for `opt_key:
+    /// OptKey`
     pub(crate) const DISPLAY_WIDTH: u16 = 10;
 
+    /// Return a human-readable name for the option
     pub(crate) fn as_str(&self) -> &'static str {
         match self {
             OptKey::Wraparound => "Wraparound",
@@ -169,15 +232,26 @@ impl fmt::Display for OptKey {
     }
 }
 
+/// A trait for modifiable option values
 #[enum_dispatch]
 pub(crate) trait Adjustable {
+    /// Increase the value if possible
     fn increase(&mut self);
+
+    /// Decrease the value if possible
     fn decrease(&mut self);
+
+    /// Toggle the value on/off if applicable
     fn toggle(&mut self);
+
+    /// Returns `true` if `increase()` would change `self`
     fn can_increase(&self) -> bool;
+
+    /// Returns `true` if `decrease()` would change `self`
     fn can_decrease(&self) -> bool;
 }
 
+/// An enum of value types used  by [`Options`]
 #[enum_dispatch(Adjustable)] // This also gives us From and TryInto
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum OptValue {
@@ -187,13 +261,15 @@ pub(crate) enum OptValue {
 }
 
 impl OptValue {
+    /// The display column width of `opt_value.to_string()` for all `opt_value:
+    /// OptValue`
     pub(crate) const DISPLAY_WIDTH: u16 = 10;
 }
 
 // This is needed for EnumMap to be convenient to construct.
 impl Default for OptValue {
     fn default() -> OptValue {
-        OptValue::Bool(false)
+        OptValue::Bool(false) // An arbitrary value
     }
 }
 
@@ -244,11 +320,17 @@ impl Adjustable for bool {
     }
 }
 
+/// Possible level sizes that the user can choose from
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum LevelSize {
+    /// A 38×8 level
     Small,
+
+    /// A 53×12 level
     Medium,
+
+    /// A 76×19 level
     #[default]
     Large,
 }
@@ -257,6 +339,7 @@ impl LevelSize {
     pub(crate) const MINIMUM: LevelSize = LevelSize::Small;
     pub(crate) const MAXIMUM: LevelSize = LevelSize::Large;
 
+    /// Return the actual size for the level size choice
     pub(crate) fn as_size(self) -> Size {
         match self {
             LevelSize::Small => Size {
@@ -314,22 +397,28 @@ impl Adjustable for LevelSize {
     }
 }
 
+/// The number of fruits present in a level at one time.  The value is
+/// restricted to between 1 and [`crate::consts::MAX_FRUITS`], inclusive.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct FruitQty(usize);
 
 impl FruitQty {
+    /// Create a new `FruitQty` with the given value.  Returns `None` if `qty`
+    /// is out of bounds.
     pub(crate) fn new(qty: usize) -> Option<FruitQty> {
         (1..=consts::MAX_FRUITS)
             .contains(&qty)
             .then_some(FruitQty(qty))
     }
 
+    /// Return the value as a `usize`
     pub(crate) fn get(self) -> usize {
         self.0
     }
 }
 
 impl Default for FruitQty {
+    /// One fruit
     fn default() -> FruitQty {
         FruitQty(1)
     }
@@ -453,20 +542,20 @@ mod tests {
 
         #[test]
         fn display_width() {
-            let actual_width = [
-                OptValue::Bool(false),
-                OptValue::Bool(true),
-                OptValue::FruitQty(FruitQty(1)),
-                OptValue::FruitQty(FruitQty(consts::MAX_FRUITS)),
-                OptValue::LevelSize(LevelSize::Small),
-                OptValue::LevelSize(LevelSize::Medium),
-                OptValue::LevelSize(LevelSize::Large),
-            ]
-            .iter()
-            .map(|value| value.to_string().chars().count())
-            .max()
-            .unwrap();
-            assert_eq!(actual_width, usize::from(OptValue::DISPLAY_WIDTH));
+            assert!(
+                [
+                    OptValue::Bool(false),
+                    OptValue::Bool(true),
+                    OptValue::FruitQty(FruitQty(1)),
+                    OptValue::FruitQty(FruitQty(consts::MAX_FRUITS)),
+                    OptValue::LevelSize(LevelSize::Small),
+                    OptValue::LevelSize(LevelSize::Medium),
+                    OptValue::LevelSize(LevelSize::Large),
+                ]
+                .iter()
+                .all(|value| value.to_string().chars().count()
+                    == usize::from(OptValue::DISPLAY_WIDTH))
+            );
         }
     }
 
