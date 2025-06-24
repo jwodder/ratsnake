@@ -3,14 +3,14 @@ mod levels;
 mod paused;
 mod snake;
 use self::direction::Direction;
-use self::levels::{Bounds, LevelMap};
+use self::levels::LevelMap;
 use self::paused::{PauseOpt, Paused};
 use self::snake::Snake;
 use crate::app::Screen;
 use crate::command::Command;
 use crate::consts;
-use crate::options::Options;
-use crate::util::{center_rect, get_display_area};
+use crate::util::{center_rect, get_display_area, Globals};
+use crate::warning::{Warning, WarningOutcome};
 use crossterm::event::{poll, read, Event};
 use rand::{seq::IteratorRandom, Rng};
 use ratatui::{
@@ -22,47 +22,49 @@ use ratatui::{
     Frame,
 };
 use std::collections::HashSet;
+use std::num::NonZeroU32;
 use std::time::Instant;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct Game<R = rand::rngs::ThreadRng> {
     rng: R,
     score: u32,
+    high_score: Option<NonZeroU32>,
     snake: Snake,
     fruits: HashSet<Position>,
     state: GameState,
     map: LevelMap,
-    options: Options,
+    globals: Globals,
     next_tick: Option<Instant>,
 }
 
 impl Game<rand::rngs::ThreadRng> {
-    pub(crate) fn new(options: Options) -> Self {
-        Game::new_with_rng(options, rand::rng())
+    pub(crate) fn new(globals: Globals) -> Self {
+        Game::new_with_rng(globals, rand::rng())
     }
 }
 
 impl<R: Rng> Game<R> {
-    pub(crate) fn new_with_rng(options: Options, mut rng: R) -> Game<R> {
-        let mut map = LevelMap::new(Bounds::from((
-            options.level_size.as_size(),
-            options.wraparound,
-        )));
-        if options.obstacles {
+    pub(crate) fn new_with_rng(globals: Globals, mut rng: R) -> Game<R> {
+        let mut map = LevelMap::new(globals.options.level_bounds());
+        if globals.options.obstacles {
             map.set_obstacles(&mut rng);
         }
         let snake = map.new_snake();
+        let fruit_qty = globals.options.fruits.get();
+        let high_score = globals.high_scores.get(globals.options);
         let mut game = Game {
             rng,
             score: 0,
+            high_score,
             snake,
             fruits: HashSet::new(),
             state: GameState::Running,
             map,
-            options,
+            globals,
             next_tick: None,
         };
-        for _ in 0..options.fruits.get() {
+        for _ in 0..fruit_qty {
             game.place_fruit();
         }
         game
@@ -92,7 +94,7 @@ impl<R: Rng> Game<R> {
             return;
         }
         if !self.snake.advance(self.map.bounds()) {
-            self.state = GameState::Dead;
+            self.state = GameState::Dead(self.finalize_score());
             return;
         }
         if self.fruits.remove(&self.snake.head()) {
@@ -102,11 +104,31 @@ impl<R: Rng> Game<R> {
         } else if self.snake.body().contains(&self.snake.head())
             || self.map.obstacles().contains(&self.snake.head())
         {
-            self.state = GameState::Dead;
+            self.state = GameState::Dead(self.finalize_score());
         }
         if self.fruits.is_empty() {
-            self.state = GameState::Exhausted;
+            self.state = GameState::Exhausted(self.finalize_score());
         }
+    }
+
+    fn finalize_score(&mut self) -> PostMortem {
+        if let Some(score) = self.new_high_score() {
+            self.globals.high_scores.set(self.globals.options, score);
+            let warning = self.globals.high_scores.save().err().map(Warning::from);
+            PostMortem {
+                new_high_score: true,
+                warning,
+            }
+        } else {
+            PostMortem {
+                new_high_score: false,
+                warning: None,
+            }
+        }
+    }
+
+    fn new_high_score(&self) -> Option<NonZeroU32> {
+        NonZeroU32::new(self.score).filter(|&score| self.high_score.is_none_or(|hs| hs < score))
     }
 
     fn place_fruit(&mut self) {
@@ -147,20 +169,37 @@ impl<R> Game<R> {
             }
             GameState::Paused(ref mut paused) => match paused.handle_event(event)? {
                 PauseOpt::Resume => self.state = GameState::Running,
-                PauseOpt::Restart => return Some(Screen::Game(Game::new(self.options))),
+                PauseOpt::Restart => return Some(Screen::Game(Game::new(self.globals.clone()))),
                 PauseOpt::MainMenu => {
-                    return Some(Screen::Main(crate::menu::MainMenu::new(self.options)))
+                    return Some(Screen::Main(crate::menu::MainMenu::new(
+                        self.globals.clone(),
+                    )))
                 }
                 PauseOpt::Quit => return Some(Screen::Quit),
             },
-            GameState::Dead | GameState::Exhausted => {
-                match Command::from_key_event(event.as_key_press_event()?)? {
-                    Command::R => return Some(Screen::Game(Game::new(self.options))),
-                    Command::M => {
-                        return Some(Screen::Main(crate::menu::MainMenu::new(self.options)))
+            GameState::Dead(PostMortem {
+                ref mut warning, ..
+            })
+            | GameState::Exhausted(PostMortem {
+                ref mut warning, ..
+            }) => {
+                let cmd = Command::from_key_event(event.as_key_press_event()?)?;
+                if let Some(wrn) = warning {
+                    match wrn.handle_command(cmd)? {
+                        WarningOutcome::Dismissed => *warning = None,
+                        WarningOutcome::Quit => return Some(Screen::Quit),
                     }
-                    Command::Quit | Command::Q => return Some(Screen::Quit),
-                    _ => (),
+                } else {
+                    match Command::from_key_event(event.as_key_press_event()?)? {
+                        Command::R => return Some(Screen::Game(Game::new(self.globals.clone()))),
+                        Command::M => {
+                            return Some(Screen::Main(crate::menu::MainMenu::new(
+                                self.globals.clone(),
+                            )))
+                        }
+                        Command::Quit | Command::Q => return Some(Screen::Quit),
+                        _ => (),
+                    }
                 }
             }
         }
@@ -186,7 +225,16 @@ impl<R> Widget for &Game<R> {
             Constraint::Length(1),
         ])
         .areas(display);
+
         Line::styled(format!(" Score: {}", self.score), consts::SCORE_BAR_STYLE)
+            .render(score_area, buf);
+
+        let hs_str = match self.high_score {
+            Some(hs) => format!("High Score: {hs} "),
+            None => String::from("High Score: - "),
+        };
+        Line::styled(hs_str, consts::SCORE_BAR_STYLE)
+            .right_aligned()
             .render(score_area, buf);
 
         let mut block_size = self.map.size();
@@ -215,7 +263,7 @@ impl<R> Widget for &Game<R> {
         }
         // Draw the head last so that, if it's a collision, we overwrite
         // whatever it's colliding with
-        if self.state == GameState::Dead {
+        if matches!(self.state, GameState::Dead(_)) {
             level.draw_cell(
                 self.snake.head(),
                 consts::COLLISION_SYMBOL,
@@ -241,8 +289,13 @@ impl<R> Widget for &Game<R> {
                 );
                 paused.render(pause_area, buf);
             }
-            GameState::Dead | GameState::Exhausted => {
-                Span::from(" — GAME OVER —").render(msg1_area, buf);
+            GameState::Dead(ref pm) | GameState::Exhausted(ref pm) => {
+                Span::from(if pm.new_high_score {
+                    " — GAME OVER — NEW HIGH SCORE! —"
+                } else {
+                    " — GAME OVER —"
+                })
+                .render(msg1_area, buf);
                 Line::from_iter([
                     Span::raw(" Choose One: Restart ("),
                     Span::styled("r", consts::KEY_STYLE),
@@ -253,6 +306,9 @@ impl<R> Widget for &Game<R> {
                     Span::raw(")"),
                 ])
                 .render(msg2_area, buf);
+                if let Some(ref warning) = pm.warning {
+                    warning.render(display, buf);
+                }
             }
         }
     }
@@ -318,14 +374,20 @@ impl Widget for DottedBorder {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 enum GameState {
     Running,
     Paused(Paused),
-    Dead,
+    Dead(PostMortem),
     /// The snake has filled the board and there are no more spaces to place
     /// fruits in.
-    Exhausted,
+    Exhausted(PostMortem),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct PostMortem {
+    new_high_score: bool,
+    warning: Option<Warning>,
 }
 
 #[cfg(test)]
@@ -335,18 +397,19 @@ mod tests {
     use crossterm::event::KeyCode;
     use rand::SeedableRng;
     use rand_chacha::ChaCha12Rng;
+    use rstest::rstest;
     use std::collections::VecDeque;
 
     const RNG_SEED: u64 = 0x0123456789ABCDEF;
 
     #[test]
     fn new_game() {
-        let game = Game::new_with_rng(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
+        let game = Game::new_with_rng(Globals::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
         game.render(area, &mut buffer);
         let mut expected = Buffer::with_lines([
-            " Score: 0",
+            " Score: 0                                                         High Score: - ",
             " ┌────────────────────────────────────────────────────────────────────────────┐ ",
             " │                                                                            │ ",
             " │                                                                            │ ",
@@ -379,18 +442,14 @@ mod tests {
 
     #[test]
     fn new_wraparound_game() {
-        let game = Game::new_with_rng(
-            Options {
-                wraparound: true,
-                ..Options::default()
-            },
-            ChaCha12Rng::seed_from_u64(RNG_SEED),
-        );
+        let mut globals = Globals::default();
+        globals.options.wraparound = true;
+        let game = Game::new_with_rng(globals, ChaCha12Rng::seed_from_u64(RNG_SEED));
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
         game.render(area, &mut buffer);
         let mut expected = Buffer::with_lines([
-            " Score: 0",
+            " Score: 0                                                         High Score: - ",
             " ·⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯· ",
             " ⋮                                                                            ⋮ ",
             " ⋮                                                                            ⋮ ",
@@ -422,8 +481,50 @@ mod tests {
     }
 
     #[test]
+    fn new_game_with_high_score() {
+        let mut globals = Globals::default();
+        globals
+            .high_scores
+            .set(globals.options, NonZeroU32::new(42).unwrap());
+        let game = Game::new_with_rng(globals, ChaCha12Rng::seed_from_u64(RNG_SEED));
+        let area = Rect::new(0, 0, 80, 24);
+        let mut buffer = Buffer::empty(area);
+        game.render(area, &mut buffer);
+        let mut expected = Buffer::with_lines([
+            " Score: 0                                                        High Score: 42 ",
+            " ┌────────────────────────────────────────────────────────────────────────────┐ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                          ●                                                 │ ",
+            " │                                      v                                     │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " └────────────────────────────────────────────────────────────────────────────┘ ",
+            "",
+            "",
+        ]);
+        expected.set_style(Rect::new(0, 0, 80, 1), consts::SCORE_BAR_STYLE);
+        expected.set_style(Rect::new(40, 11, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
+        pretty_assertions::assert_eq!(buffer, expected);
+    }
+
+    #[test]
     fn self_collision() {
-        let mut game = Game::new_with_rng(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
+        let mut game = Game::new_with_rng(Globals::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
         game.score = 3;
         game.snake.head = Position::new(30, 6);
         game.snake.body = VecDeque::from([
@@ -442,12 +543,15 @@ mod tests {
         ]);
         game.snake.max_len = 12;
         game.snake.direction = Direction::North;
-        game.state = GameState::Dead;
+        game.state = GameState::Dead(PostMortem {
+            new_high_score: false,
+            warning: None,
+        });
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
         game.render(area, &mut buffer);
         let mut expected = Buffer::with_lines([
-            " Score: 3",
+            " Score: 3                                                         High Score: - ",
             " ┌────────────────────────────────────────────────────────────────────────────┐ ",
             " │                                                                            │ ",
             " │                                                                            │ ",
@@ -493,19 +597,93 @@ mod tests {
     }
 
     #[test]
-    fn new_medium_game() {
-        let game = Game::new_with_rng(
-            Options {
-                level_size: LevelSize::Medium,
-                ..Options::default()
-            },
-            ChaCha12Rng::seed_from_u64(RNG_SEED),
-        );
+    fn self_collision_new_high_score() {
+        let mut globals = Globals::default();
+        globals
+            .high_scores
+            .set(globals.options, NonZeroU32::new(2).unwrap());
+        let mut game = Game::new_with_rng(globals, ChaCha12Rng::seed_from_u64(RNG_SEED));
+        game.score = 3;
+        game.snake.head = Position::new(30, 6);
+        game.snake.body = VecDeque::from([
+            Position::new(30, 6),
+            Position::new(31, 6),
+            Position::new(32, 6),
+            Position::new(33, 6),
+            Position::new(33, 7),
+            Position::new(33, 8),
+            Position::new(33, 9),
+            Position::new(32, 9),
+            Position::new(31, 9),
+            Position::new(30, 9),
+            Position::new(30, 8),
+            Position::new(30, 7),
+        ]);
+        game.snake.max_len = 12;
+        game.snake.direction = Direction::North;
+        game.state = GameState::Dead(PostMortem {
+            new_high_score: true,
+            warning: None,
+        });
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
         game.render(area, &mut buffer);
         let mut expected = Buffer::with_lines([
-            " Score: 0",
+            " Score: 3                                                         High Score: 2 ",
+            " ┌────────────────────────────────────────────────────────────────────────────┐ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                              ×⚬⚬⚬                                          │ ",
+            " │                              ⚬  ⚬                                          │ ",
+            " │                          ●   ⚬  ⚬                                          │ ",
+            " │                              ⚬⚬⚬⚬                                          │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " │                                                                            │ ",
+            " └────────────────────────────────────────────────────────────────────────────┘ ",
+            " — GAME OVER — NEW HIGH SCORE! —",
+            " Choose One: Restart (r) — Main Menu (m) — Quit (q)",
+        ]);
+        expected.set_style(Rect::new(0, 0, 80, 1), consts::SCORE_BAR_STYLE);
+        expected.set_style(Rect::new(32, 8, 1, 1), consts::COLLISION_STYLE);
+        expected.set_style(Rect::new(33, 8, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(34, 8, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(35, 8, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(35, 9, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(35, 10, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(35, 11, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(34, 11, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(33, 11, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(32, 11, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(32, 10, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(32, 9, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
+        expected.set_style(Rect::new(22, 23, 1, 1), consts::KEY_STYLE);
+        expected.set_style(Rect::new(38, 23, 1, 1), consts::KEY_STYLE);
+        expected.set_style(Rect::new(49, 23, 1, 1), consts::KEY_STYLE);
+        pretty_assertions::assert_eq!(buffer, expected);
+    }
+
+    #[test]
+    fn new_medium_game() {
+        let mut globals = Globals::default();
+        globals.options.level_size = LevelSize::Medium;
+        let game = Game::new_with_rng(globals, ChaCha12Rng::seed_from_u64(RNG_SEED));
+        let area = Rect::new(0, 0, 80, 24);
+        let mut buffer = Buffer::empty(area);
+        game.render(area, &mut buffer);
+        let mut expected = Buffer::with_lines([
+            " Score: 0                                                         High Score: - ",
             "",
             "",
             "",
@@ -538,13 +716,13 @@ mod tests {
 
     #[test]
     fn paused() {
-        let mut game = Game::new_with_rng(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
+        let mut game = Game::new_with_rng(Globals::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
         assert!(game.handle_event(Event::Key(KeyCode::Esc.into())).is_none());
         game.render(area, &mut buffer);
         let mut expected = Buffer::with_lines([
-            " Score: 0",
+            " Score: 0                                                         High Score: - ",
             " ┌────────────────────────────────────────────────────────────────────────────┐ ",
             " │                                                                            │ ",
             " │                                                                            │ ",
@@ -577,5 +755,31 @@ mod tests {
         expected.set_style(Rect::new(46, 12, 1, 1), consts::KEY_STYLE);
         expected.set_style(Rect::new(41, 13, 1, 1), consts::KEY_STYLE);
         pretty_assertions::assert_eq!(buffer, expected);
+    }
+
+    #[rstest]
+    #[case(0, None, false)]
+    #[case(1, None, true)]
+    #[case(42, None, true)]
+    #[case(0, NonZeroU32::new(1), false)]
+    #[case(1, NonZeroU32::new(1), false)]
+    #[case(1, NonZeroU32::new(42), false)]
+    #[case(42, NonZeroU32::new(42), false)]
+    #[case(42, NonZeroU32::new(1), true)]
+    fn test_new_high_score(
+        #[case] score: u32,
+        #[case] old_high_score: Option<NonZeroU32>,
+        #[case] new: bool,
+    ) {
+        let mut game = Game::new(Globals::default());
+        game.score = score;
+        game.high_score = old_high_score;
+        if new {
+            let hs = NonZeroU32::new(score);
+            assert!(hs.is_some());
+            assert_eq!(game.new_high_score(), hs);
+        } else {
+            assert_eq!(game.new_high_score(), None);
+        }
     }
 }

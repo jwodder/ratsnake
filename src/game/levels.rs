@@ -1,11 +1,12 @@
 use super::direction::Direction;
 use super::snake::Snake;
 use crate::consts;
+use crate::util::Bounds;
 use rand::{
     distr::{Bernoulli, Distribution},
     Rng,
 };
-use ratatui::layout::{Position, Positions, Rect, Size};
+use ratatui::layout::{Position, Size};
 use std::collections::HashSet;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -67,35 +68,5 @@ impl LevelMap {
 
     pub(super) fn wrap(&self) -> bool {
         self.bounds.wrap
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) struct Bounds {
-    pub(super) width: u16,
-    pub(super) height: u16,
-    pub(super) wrap: bool,
-}
-
-impl Bounds {
-    pub(super) fn size(self) -> Size {
-        Size {
-            width: self.width,
-            height: self.height,
-        }
-    }
-
-    pub(super) fn positions(self) -> Positions {
-        Rect::from((Position::ORIGIN, self.size())).positions()
-    }
-}
-
-impl From<(Size, bool)> for Bounds {
-    fn from((size, wrap): (Size, bool)) -> Bounds {
-        Bounds {
-            width: size.width,
-            height: size.height,
-            wrap,
-        }
     }
 }

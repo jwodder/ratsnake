@@ -1,5 +1,5 @@
 use crate::consts;
-use crate::util::options_file_path;
+use crate::util::{options_file_path, Bounds};
 use enum_dispatch::enum_dispatch;
 use enum_map::Enum;
 use ratatui::layout::Size;
@@ -11,7 +11,7 @@ use serde::{
 use std::fmt;
 use thiserror::Error;
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub(crate) struct Options {
     pub(crate) wraparound: bool,
     pub(crate) obstacles: bool,
@@ -73,6 +73,10 @@ impl Options {
                     .expect("Options::set(LevelSize, value) called with non-LevelSize value");
             }
         }
+    }
+
+    pub(crate) fn level_bounds(&self) -> Bounds {
+        Bounds::new(self.level_size.as_size(), self.wraparound)
     }
 }
 
@@ -240,7 +244,7 @@ impl Adjustable for bool {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum LevelSize {
     Small,
@@ -310,7 +314,7 @@ impl Adjustable for LevelSize {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct FruitQty(usize);
 
 impl FruitQty {

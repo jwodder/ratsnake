@@ -1,7 +1,41 @@
 use crate::consts;
 use enum_map::Enum;
-use ratatui::layout::{Flex, Layout, Rect, Size};
+use ratatui::layout::{Flex, Layout, Position, Positions, Rect, Size};
 use std::path::PathBuf;
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub(crate) struct Globals {
+    pub(crate) options: crate::options::Options,
+    pub(crate) high_scores: crate::highscores::HighScores,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct Bounds {
+    pub(crate) width: u16,
+    pub(crate) height: u16,
+    pub(crate) wrap: bool,
+}
+
+impl Bounds {
+    pub(crate) fn new(size: Size, wrap: bool) -> Bounds {
+        Bounds {
+            width: size.width,
+            height: size.height,
+            wrap,
+        }
+    }
+
+    pub(crate) fn size(self) -> Size {
+        Size {
+            width: self.width,
+            height: self.height,
+        }
+    }
+
+    pub(crate) fn positions(self) -> Positions {
+        Rect::from((Position::ORIGIN, self.size())).positions()
+    }
+}
 
 pub(crate) trait EnumExt: Enum {
     fn iter() -> EnumExtIter<Self>;
@@ -89,6 +123,14 @@ pub(crate) fn get_display_area(buffer_area: Rect) -> Rect {
     center_rect(buffer_area, consts::DISPLAY_SIZE)
 }
 
+fn data_dir() -> Option<PathBuf> {
+    dirs::data_local_dir().map(|p| p.join("ratsnake"))
+}
+
 pub(crate) fn options_file_path() -> Option<PathBuf> {
-    dirs::data_local_dir().map(|p| p.join("ratsnake").join("options.json"))
+    data_dir().map(|p| p.join("options.json"))
+}
+
+pub(crate) fn high_scores_file_path() -> Option<PathBuf> {
+    data_dir().map(|p| p.join("highscores").join("arcade.json"))
 }

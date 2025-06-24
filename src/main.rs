@@ -2,12 +2,13 @@ mod app;
 mod command;
 mod consts;
 mod game;
+mod highscores;
 mod menu;
 mod options;
 mod util;
 mod warning;
 use crate::app::App;
-use crate::options::Options;
+use crate::util::Globals;
 use crossterm::{
     event::{DisableFocusChange, EnableFocusChange},
     execute,
@@ -17,8 +18,15 @@ use std::process::ExitCode;
 use thiserror::Error;
 
 fn main() -> ExitCode {
-    let opts = match Options::load() {
+    let options = match options::Options::load() {
         Ok(opts) => opts,
+        Err(e) => {
+            let _ = writeln!(io::stderr().lock(), "ratsnake: {:?}", anyhow::Error::new(e));
+            return ExitCode::FAILURE;
+        }
+    };
+    let high_scores = match highscores::HighScores::load() {
+        Ok(hs) => hs,
         Err(e) => {
             let _ = writeln!(io::stderr().lock(), "ratsnake: {:?}", anyhow::Error::new(e));
             return ExitCode::FAILURE;
@@ -30,7 +38,12 @@ fn main() -> ExitCode {
             return e.report();
         }
     };
-    let r = App::new(opts).run(terminal).map_err(MainError::App);
+    let r = App::new(Globals {
+        options,
+        high_scores,
+    })
+    .run(terminal)
+    .map_err(MainError::App);
     let code = if let Err(e) = restore_terminal() {
         e.report()
     } else {
