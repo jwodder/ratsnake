@@ -111,26 +111,6 @@ impl<R: Rng> Game<R> {
         }
     }
 
-    fn finalize_score(&mut self) -> PostMortem {
-        if let Some(score) = self.new_high_score() {
-            self.globals.high_scores.set(self.globals.options, score);
-            let warning = self.globals.high_scores.save().err().map(Warning::from);
-            PostMortem {
-                new_high_score: true,
-                warning,
-            }
-        } else {
-            PostMortem {
-                new_high_score: false,
-                warning: None,
-            }
-        }
-    }
-
-    fn new_high_score(&self) -> Option<NonZeroU32> {
-        NonZeroU32::new(self.score).filter(|&score| self.high_score.is_none_or(|hs| hs < score))
-    }
-
     fn place_fruit(&mut self) {
         let mut occupied = &self.fruits | self.map.obstacles();
         occupied.insert(self.snake.head());
@@ -204,6 +184,26 @@ impl<R> Game<R> {
             }
         }
         None
+    }
+
+    fn finalize_score(&mut self) -> PostMortem {
+        if let Some(score) = self.new_high_score() {
+            self.globals.high_scores.set(self.globals.options, score);
+            let warning = self.globals.high_scores.save().err().map(Warning::from);
+            PostMortem {
+                new_high_score: true,
+                warning,
+            }
+        } else {
+            PostMortem {
+                new_high_score: false,
+                warning: None,
+            }
+        }
+    }
+
+    fn new_high_score(&self) -> Option<NonZeroU32> {
+        NonZeroU32::new(self.score).filter(|&score| self.high_score.is_none_or(|hs| hs < score))
     }
 
     fn running(&self) -> bool {
