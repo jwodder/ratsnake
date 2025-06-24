@@ -24,10 +24,16 @@ impl Command {
     pub(crate) fn from_key_event(ev: KeyEvent) -> Option<Command> {
         match (ev.modifiers, ev.code) {
             (KeyModifiers::CONTROL, KeyCode::Char('c')) => Some(Command::Quit),
-            (KeyModifiers::NONE, KeyCode::Char('w' | 'k') | KeyCode::Up) => Some(Command::Up),
-            (KeyModifiers::NONE, KeyCode::Char('s' | 'j') | KeyCode::Down) => Some(Command::Down),
-            (KeyModifiers::NONE, KeyCode::Char('a' | 'h') | KeyCode::Left) => Some(Command::Left),
-            (KeyModifiers::NONE, KeyCode::Char('d' | 'l') | KeyCode::Right) => Some(Command::Right),
+            (KeyModifiers::NONE, KeyCode::Char('w' | 'k' | '8') | KeyCode::Up) => Some(Command::Up),
+            (KeyModifiers::NONE, KeyCode::Char('s' | 'j' | '2') | KeyCode::Down) => {
+                Some(Command::Down)
+            }
+            (KeyModifiers::NONE, KeyCode::Char('a' | 'h' | '4') | KeyCode::Left) => {
+                Some(Command::Left)
+            }
+            (KeyModifiers::NONE, KeyCode::Char('d' | 'l' | '6') | KeyCode::Right) => {
+                Some(Command::Right)
+            }
             (_, KeyCode::Enter) => Some(Command::Enter),
             (KeyModifiers::NONE, KeyCode::Char(' ')) => Some(Command::Space),
             (_, KeyCode::Home) => Some(Command::Home),

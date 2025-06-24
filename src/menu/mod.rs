@@ -312,6 +312,7 @@ mod tests {
                 "                                     ← ↓ ↑ →                                    ",
                 "                                 or: h j k l                                    ",
                 "                                 or: a s w d                                    ",
+                "                                 or: 4 2 8 6                                    ",
                 "                              Eat the fruit, but                                ",
                 "                              don't hit yourself!                               ",
                 "                                                                                ",
@@ -325,7 +326,6 @@ mod tests {
                 "                          └──────────────────────────┘                          ",
                 "                                                                                ",
                 "                                   [Quit (q)]                                   ",
-                "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
@@ -341,9 +341,13 @@ mod tests {
             expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(42, 13, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(35, 13, 10, 1), consts::MENU_SELECTION_STYLE);
-            expected.set_style(Rect::new(42, 22, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(42, 14, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(35, 14, 10, 1), consts::MENU_SELECTION_STYLE);
+            expected.set_style(Rect::new(42, 23, 1, 1), consts::KEY_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
         }
 
@@ -367,6 +371,7 @@ mod tests {
                 "                                     ← ↓ ↑ →                                    ",
                 "                                 or: h j k l                                    ",
                 "                                 or: a s w d                                    ",
+                "                                 or: 4 2 8 6                                    ",
                 "                              Eat the fruit, but                                ",
                 "                              don't hit yourself!                               ",
                 "                                                                                ",
@@ -380,7 +385,6 @@ mod tests {
                 "                          └──────────────────────────┘                          ",
                 "                                                                                ",
                 "                                   [Quit (q)]                                   ",
-                "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
@@ -396,9 +400,13 @@ mod tests {
             expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(42, 13, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(28, 16, 24, 1), consts::MENU_SELECTION_STYLE);
-            expected.set_style(Rect::new(42, 22, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(42, 14, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(28, 17, 24, 1), consts::MENU_SELECTION_STYLE);
+            expected.set_style(Rect::new(42, 23, 1, 1), consts::KEY_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -417,6 +425,7 @@ mod tests {
                 "                                     ← ↓ ↑ →                                    ",
                 "                                 or: h j k l                                    ",
                 "                                 or: a s w d                                    ",
+                "                                 or: 4 2 8 6                                    ",
                 "                              Eat the fruit, but                                ",
                 "                              don't hit yourself!                               ",
                 "                                                                                ",
@@ -430,11 +439,10 @@ mod tests {
                 "                          └──────────────────────────┘                          ",
                 "                                                                                ",
                 "                                   [Quit (q)]                                   ",
-                "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
-            expected.set_style(Rect::new(28, 16, 24, 1), consts::MENU_SELECTION_STYLE);
+            expected.set_style(Rect::new(28, 17, 24, 1), consts::MENU_SELECTION_STYLE);
             expected.set_style(Rect::new(37, 7, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(39, 7, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(41, 7, 1, 1), consts::KEY_STYLE);
@@ -447,8 +455,12 @@ mod tests {
             expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(42, 13, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(42, 22, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(42, 14, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(42, 23, 1, 1), consts::KEY_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -476,6 +488,7 @@ mod tests {
                 "                                     ← ↓ ↑ →                                    ",
                 "                                 or: h j k l                                    ",
                 "                                 or: a s w d                                    ",
+                "                                 or: 4 2 8 6                                    ",
                 "                              Eat the fruit, but                                ",
                 "                              don't hit yourself!                               ",
                 "                                                                                ",
@@ -489,7 +502,6 @@ mod tests {
                 "                          └──────────────────────────┘                          ",
                 "                                                                                ",
                 "                                   [Quit (q)]                                   ",
-                "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
@@ -505,9 +517,13 @@ mod tests {
             expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(42, 13, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(28, 19, 24, 1), consts::MENU_SELECTION_STYLE);
-            expected.set_style(Rect::new(42, 22, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(42, 14, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(28, 20, 24, 1), consts::MENU_SELECTION_STYLE);
+            expected.set_style(Rect::new(42, 23, 1, 1), consts::KEY_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -526,6 +542,7 @@ mod tests {
                 "                                     ← ↓ ↑ →                                    ",
                 "                                 or: h j k l                                    ",
                 "                                 or: a s w d                                    ",
+                "                                 or: 4 2 8 6                                    ",
                 "                              Eat the fruit, but                                ",
                 "                              don't hit yourself!                               ",
                 "                                                                                ",
@@ -539,7 +556,6 @@ mod tests {
                 "                          └──────────────────────────┘                          ",
                 "                                                                                ",
                 "                                   [Quit (q)]                                   ",
-                "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
@@ -555,9 +571,13 @@ mod tests {
             expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(42, 13, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(28, 19, 24, 1), consts::MENU_SELECTION_STYLE);
-            expected.set_style(Rect::new(42, 22, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(42, 14, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(28, 20, 24, 1), consts::MENU_SELECTION_STYLE);
+            expected.set_style(Rect::new(42, 23, 1, 1), consts::KEY_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(menu
@@ -576,6 +596,7 @@ mod tests {
                 "                                     ← ↓ ↑ →                                    ",
                 "                                 or: h j k l                                    ",
                 "                                 or: a s w d                                    ",
+                "                                 or: 4 2 8 6                                    ",
                 "                              Eat the fruit, but                                ",
                 "                              don't hit yourself!                               ",
                 "                                                                                ",
@@ -589,7 +610,6 @@ mod tests {
                 "                          └──────────────────────────┘                          ",
                 "                                                                                ",
                 "                                   [Quit (q)]                                   ",
-                "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE);
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE);
@@ -605,9 +625,13 @@ mod tests {
             expected.set_style(Rect::new(39, 9, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(41, 9, 1, 1), consts::KEY_STYLE);
             expected.set_style(Rect::new(43, 9, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(42, 13, 1, 1), consts::KEY_STYLE);
-            expected.set_style(Rect::new(28, 19, 24, 1), consts::MENU_SELECTION_STYLE);
-            expected.set_style(Rect::new(42, 22, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(37, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(39, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(41, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(43, 10, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(42, 14, 1, 1), consts::KEY_STYLE);
+            expected.set_style(Rect::new(28, 20, 24, 1), consts::MENU_SELECTION_STYLE);
+            expected.set_style(Rect::new(42, 23, 1, 1), consts::KEY_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
         }
 
