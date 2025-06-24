@@ -92,7 +92,7 @@ impl<R: Rng> Game<R> {
             return;
         }
         if !self.snake.advance(self.map.bounds()) {
-            self.state = GameState::GameOver;
+            self.state = GameState::Dead;
             return;
         }
         if self.fruits.remove(&self.snake.head()) {
@@ -102,10 +102,10 @@ impl<R: Rng> Game<R> {
         } else if self.snake.body().contains(&self.snake.head())
             || self.map.obstacles().contains(&self.snake.head())
         {
-            self.state = GameState::GameOver;
+            self.state = GameState::Dead;
         }
         if self.fruits.is_empty() {
-            self.state = GameState::GameOver;
+            self.state = GameState::Exhausted;
         }
     }
 
@@ -153,12 +153,16 @@ impl<R> Game<R> {
                 }
                 PauseOpt::Quit => return Some(Screen::Quit),
             },
-            GameState::GameOver => match Command::from_key_event(event.as_key_press_event()?)? {
-                Command::R => return Some(Screen::Game(Game::new(self.options))),
-                Command::M => return Some(Screen::Main(crate::menu::MainMenu::new(self.options))),
-                Command::Quit | Command::Q => return Some(Screen::Quit),
-                _ => (),
-            },
+            GameState::Dead | GameState::Exhausted => {
+                match Command::from_key_event(event.as_key_press_event()?)? {
+                    Command::R => return Some(Screen::Game(Game::new(self.options))),
+                    Command::M => {
+                        return Some(Screen::Main(crate::menu::MainMenu::new(self.options)))
+                    }
+                    Command::Quit | Command::Q => return Some(Screen::Quit),
+                    _ => (),
+                }
+            }
         }
         None
     }
@@ -211,7 +215,7 @@ impl<R> Widget for &Game<R> {
         }
         // Draw the head last so that, if it's a collision, we overwrite
         // whatever it's colliding with
-        if self.state == GameState::GameOver {
+        if self.state == GameState::Dead {
             level.draw_cell(
                 self.snake.head(),
                 consts::COLLISION_SYMBOL,
@@ -237,7 +241,7 @@ impl<R> Widget for &Game<R> {
                 );
                 paused.render(pause_area, buf);
             }
-            GameState::GameOver => {
+            GameState::Dead | GameState::Exhausted => {
                 Span::from(" — GAME OVER —").render(msg1_area, buf);
                 Line::from_iter([
                     Span::raw(" Choose One: Restart ("),
@@ -318,7 +322,10 @@ impl Widget for DottedBorder {
 enum GameState {
     Running,
     Paused(Paused),
-    GameOver,
+    Dead,
+    /// The snake has filled the board and there are no more spaces to place
+    /// fruits in.
+    Exhausted,
 }
 
 #[cfg(test)]
@@ -435,7 +442,7 @@ mod tests {
         ]);
         game.snake.max_len = 12;
         game.snake.direction = Direction::North;
-        game.state = GameState::GameOver;
+        game.state = GameState::Dead;
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
         game.render(area, &mut buffer);
