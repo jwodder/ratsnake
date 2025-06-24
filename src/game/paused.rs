@@ -14,21 +14,30 @@ use ratatui::{
     },
 };
 
+/// A widget for displaying a pause menu pop-up
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct Paused {
+    /// The currently-selected item in the pause menu
     selection: PauseOpt,
 }
 
 impl Paused {
+    /// The height that should be used for the `Rect` passed to
+    /// `Paused::render()`
     pub(super) const HEIGHT: u16 = 6;
+
+    /// The width that should be used for the `Rect` passed to
+    /// `Paused::render()`
     pub(super) const WIDTH: u16 = 19;
 
+    /// Create a new `Paused`
     pub(super) fn new() -> Paused {
         Paused {
             selection: PauseOpt::min(),
         }
     }
 
+    /// Handle an input event.  Returns `Some` if the user made a choice.
     pub(super) fn handle_event(&mut self, event: Event) -> Option<PauseOpt> {
         match Command::from_key_event(event.as_key_press_event()?)? {
             Command::Esc => return Some(PauseOpt::Resume),
@@ -56,15 +65,25 @@ impl Paused {
     }
 }
 
+/// The choices in the pause menu
 #[derive(Clone, Copy, Debug, Enum, Eq, PartialEq)]
 pub(super) enum PauseOpt {
+    /// Unpause/resume the game
     Resume,
+
+    /// Start the game over
     Restart,
+
+    /// Return to the main menu
     MainMenu,
+
+    /// Quit the application
     Quit,
 }
 
 impl PauseOpt {
+    /// Render the option as a `Line` for display in the pause menu.  If
+    /// `selected` is `true`, this option is the currently-selected/active one.
     fn to_line(self, selected: bool) -> Line<'static> {
         let mut line = Line::default();
         if selected {

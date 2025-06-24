@@ -105,6 +105,16 @@ unused_associated_type_bounds = "deny"
 unused_comparisons = "deny"
 while_true = "deny"
 
+[lints.rustdoc]
+bare_urls = "deny"
+broken_intra_doc_links = "deny"
+invalid_codeblock_attributes = "deny"
+invalid_html_tags = "deny"
+invalid_rust_codeblocks = "deny"
+private_intra_doc_links = "deny"
+redundant_explicit_links = "deny"
+unescaped_backticks = "deny"
+
 [lints.clippy]
 # Deny all warn-by-default lints:
 all = { level = "deny", priority = -1 }
