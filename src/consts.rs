@@ -4,7 +4,7 @@ use ratatui::{
 };
 use std::time::Duration;
 
-pub(crate) const TICK_DURATION: Duration = Duration::from_millis(200);
+pub(crate) const TICK_PERIOD: Duration = Duration::from_millis(200);
 
 pub(crate) const DISPLAY_SIZE: Size = Size {
     width: 80,
