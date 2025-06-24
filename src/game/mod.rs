@@ -6,7 +6,7 @@ use self::direction::Direction;
 use self::levels::{Bounds, LevelMap};
 use self::paused::{PauseOpt, Paused};
 use self::snake::Snake;
-use crate::app::AppState;
+use crate::app::Screen;
 use crate::command::Command;
 use crate::consts;
 use crate::options::Options;
@@ -68,7 +68,7 @@ impl<R: Rng> Game<R> {
         game
     }
 
-    pub(crate) fn process_input(&mut self) -> std::io::Result<Option<AppState>> {
+    pub(crate) fn process_input(&mut self) -> std::io::Result<Option<Screen>> {
         if self.running() {
             if self.next_tick.is_none() {
                 self.next_tick = Some(Instant::now() + consts::TICK_PERIOD);
@@ -128,14 +128,14 @@ impl<R> Game<R> {
         frame.render_widget(self, frame.area());
     }
 
-    fn handle_event(&mut self, event: Event) -> Option<AppState> {
+    fn handle_event(&mut self, event: Event) -> Option<Screen> {
         match self.state {
             GameState::Running => {
                 if event == Event::FocusLost {
                     self.pause();
                 } else {
                     match Command::from_key_event(event.as_key_press_event()?)? {
-                        Command::Quit => return Some(AppState::Quit),
+                        Command::Quit => return Some(Screen::Quit),
                         Command::Up => self.snake.turn(Direction::North),
                         Command::Left => self.snake.turn(Direction::West),
                         Command::Down => self.snake.turn(Direction::South),
@@ -147,18 +147,16 @@ impl<R> Game<R> {
             }
             GameState::Paused(ref mut paused) => match paused.handle_event(event)? {
                 PauseOpt::Resume => self.state = GameState::Running,
-                PauseOpt::Restart => return Some(AppState::Game(Game::new(self.options))),
+                PauseOpt::Restart => return Some(Screen::Game(Game::new(self.options))),
                 PauseOpt::MainMenu => {
-                    return Some(AppState::Main(crate::menu::MainMenu::new(self.options)))
+                    return Some(Screen::Main(crate::menu::MainMenu::new(self.options)))
                 }
-                PauseOpt::Quit => return Some(AppState::Quit),
+                PauseOpt::Quit => return Some(Screen::Quit),
             },
             GameState::GameOver => match Command::from_key_event(event.as_key_press_event()?)? {
-                Command::R => return Some(AppState::Game(Game::new(self.options))),
-                Command::M => {
-                    return Some(AppState::Main(crate::menu::MainMenu::new(self.options)))
-                }
-                Command::Quit | Command::Q => return Some(AppState::Quit),
+                Command::R => return Some(Screen::Game(Game::new(self.options))),
+                Command::M => return Some(Screen::Main(crate::menu::MainMenu::new(self.options))),
+                Command::Quit | Command::Q => return Some(Screen::Quit),
                 _ => (),
             },
         }
