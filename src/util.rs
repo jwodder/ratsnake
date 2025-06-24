@@ -3,6 +3,11 @@ use enum_map::Enum;
 use ratatui::layout::{Flex, Layout, Rect, Size};
 use std::path::PathBuf;
 
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub(crate) struct Globals {
+    pub(crate) options: crate::options::Options,
+}
+
 pub(crate) trait EnumExt: Enum {
     fn iter() -> EnumExtIter<Self>;
     fn next(self) -> Option<Self>;

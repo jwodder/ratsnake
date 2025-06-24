@@ -1,6 +1,5 @@
 use crate::game::Game;
 use crate::menu::MainMenu;
-use crate::options::Options;
 use ratatui::{backend::Backend, Terminal};
 
 #[derive(Clone, Debug)]
@@ -9,8 +8,8 @@ pub(crate) struct App {
 }
 
 impl App {
-    pub(crate) fn new(opts: Options) -> App {
-        let screen = Screen::Main(MainMenu::new(opts));
+    pub(crate) fn new(globals: crate::util::Globals) -> App {
+        let screen = Screen::Main(MainMenu::new(globals));
         App { screen }
     }
 

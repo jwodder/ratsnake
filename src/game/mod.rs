@@ -9,8 +9,7 @@ use self::snake::Snake;
 use crate::app::Screen;
 use crate::command::Command;
 use crate::consts;
-use crate::options::Options;
-use crate::util::{center_rect, get_display_area};
+use crate::util::{center_rect, get_display_area, Globals};
 use crossterm::event::{poll, read, Event};
 use rand::{seq::IteratorRandom, Rng};
 use ratatui::{
@@ -32,26 +31,27 @@ pub(crate) struct Game<R = rand::rngs::ThreadRng> {
     fruits: HashSet<Position>,
     state: GameState,
     map: LevelMap,
-    options: Options,
+    globals: Globals,
     next_tick: Option<Instant>,
 }
 
 impl Game<rand::rngs::ThreadRng> {
-    pub(crate) fn new(options: Options) -> Self {
-        Game::new_with_rng(options, rand::rng())
+    pub(crate) fn new(globals: Globals) -> Self {
+        Game::new_with_rng(globals, rand::rng())
     }
 }
 
 impl<R: Rng> Game<R> {
-    pub(crate) fn new_with_rng(options: Options, mut rng: R) -> Game<R> {
+    pub(crate) fn new_with_rng(globals: Globals, mut rng: R) -> Game<R> {
         let mut map = LevelMap::new(Bounds::from((
-            options.level_size.as_size(),
-            options.wraparound,
+            globals.options.level_size.as_size(),
+            globals.options.wraparound,
         )));
-        if options.obstacles {
+        if globals.options.obstacles {
             map.set_obstacles(&mut rng);
         }
         let snake = map.new_snake();
+        let fruit_qty = globals.options.fruits.get();
         let mut game = Game {
             rng,
             score: 0,
@@ -59,10 +59,10 @@ impl<R: Rng> Game<R> {
             fruits: HashSet::new(),
             state: GameState::Running,
             map,
-            options,
+            globals,
             next_tick: None,
         };
-        for _ in 0..options.fruits.get() {
+        for _ in 0..fruit_qty {
             game.place_fruit();
         }
         game
@@ -147,17 +147,21 @@ impl<R> Game<R> {
             }
             GameState::Paused(ref mut paused) => match paused.handle_event(event)? {
                 PauseOpt::Resume => self.state = GameState::Running,
-                PauseOpt::Restart => return Some(Screen::Game(Game::new(self.options))),
+                PauseOpt::Restart => return Some(Screen::Game(Game::new(self.globals.clone()))),
                 PauseOpt::MainMenu => {
-                    return Some(Screen::Main(crate::menu::MainMenu::new(self.options)))
+                    return Some(Screen::Main(crate::menu::MainMenu::new(
+                        self.globals.clone(),
+                    )))
                 }
                 PauseOpt::Quit => return Some(Screen::Quit),
             },
             GameState::Dead | GameState::Exhausted => {
                 match Command::from_key_event(event.as_key_press_event()?)? {
-                    Command::R => return Some(Screen::Game(Game::new(self.options))),
+                    Command::R => return Some(Screen::Game(Game::new(self.globals.clone()))),
                     Command::M => {
-                        return Some(Screen::Main(crate::menu::MainMenu::new(self.options)))
+                        return Some(Screen::Main(crate::menu::MainMenu::new(
+                            self.globals.clone(),
+                        )))
                     }
                     Command::Quit | Command::Q => return Some(Screen::Quit),
                     _ => (),
@@ -341,7 +345,7 @@ mod tests {
 
     #[test]
     fn new_game() {
-        let game = Game::new_with_rng(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
+        let game = Game::new_with_rng(Globals::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
         game.render(area, &mut buffer);
@@ -379,13 +383,9 @@ mod tests {
 
     #[test]
     fn new_wraparound_game() {
-        let game = Game::new_with_rng(
-            Options {
-                wraparound: true,
-                ..Options::default()
-            },
-            ChaCha12Rng::seed_from_u64(RNG_SEED),
-        );
+        let mut globals = Globals::default();
+        globals.options.wraparound = true;
+        let game = Game::new_with_rng(globals, ChaCha12Rng::seed_from_u64(RNG_SEED));
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
         game.render(area, &mut buffer);
@@ -423,7 +423,7 @@ mod tests {
 
     #[test]
     fn self_collision() {
-        let mut game = Game::new_with_rng(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
+        let mut game = Game::new_with_rng(Globals::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
         game.score = 3;
         game.snake.head = Position::new(30, 6);
         game.snake.body = VecDeque::from([
@@ -494,13 +494,9 @@ mod tests {
 
     #[test]
     fn new_medium_game() {
-        let game = Game::new_with_rng(
-            Options {
-                level_size: LevelSize::Medium,
-                ..Options::default()
-            },
-            ChaCha12Rng::seed_from_u64(RNG_SEED),
-        );
+        let mut globals = Globals::default();
+        globals.options.level_size = LevelSize::Medium;
+        let game = Game::new_with_rng(globals, ChaCha12Rng::seed_from_u64(RNG_SEED));
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
         game.render(area, &mut buffer);
@@ -538,7 +534,7 @@ mod tests {
 
     #[test]
     fn paused() {
-        let mut game = Game::new_with_rng(Options::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
+        let mut game = Game::new_with_rng(Globals::default(), ChaCha12Rng::seed_from_u64(RNG_SEED));
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
         assert!(game.handle_event(Event::Key(KeyCode::Esc.into())).is_none());

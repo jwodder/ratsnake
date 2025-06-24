@@ -5,7 +5,7 @@ use crate::command::Command;
 use crate::consts;
 use crate::game::Game;
 use crate::options::{Adjustable, OptKey, OptValue, Options};
-use crate::util::{get_display_area, EnumExt};
+use crate::util::{get_display_area, EnumExt, Globals};
 use crate::warning::{Warning, WarningOutcome};
 use crossterm::event::{read, Event};
 use enum_map::{Enum, EnumMap};
@@ -24,16 +24,18 @@ use ratatui::{
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct MainMenu {
     selection: Selection,
-    options: OptionsMenu,
+    opts_menu: OptionsMenu,
     state: MenuState,
+    globals: Globals,
 }
 
 impl MainMenu {
-    pub(crate) fn new(options: Options) -> Self {
+    pub(crate) fn new(globals: Globals) -> Self {
         MainMenu {
             selection: Selection::default(),
-            options: OptionsMenu::new(options),
+            opts_menu: OptionsMenu::new(globals.options),
             state: MenuState::Plain,
+            globals,
         }
     }
 
@@ -55,7 +57,9 @@ impl MainMenu {
                 (_, Command::Home) => self.select(Selection::PlayButton, None),
                 (_, Command::End) => self.select(Selection::QuitButton, None),
                 (Selection::PlayButton, Command::Enter) | (_, Command::P) => {
-                    match self.options.to_options().save() {
+                    let options = self.opts_menu.to_options();
+                    self.globals.options = options;
+                    match options.save() {
                         Ok(()) => return Some(Screen::Game(self.play())),
                         Err(e) => self.state = MenuState::SaveWarning(Warning::from(e)),
                     }
@@ -65,18 +69,18 @@ impl MainMenu {
                     self.select(Selection::Options, Some(true));
                 }
                 (Selection::Options, Command::Up | Command::Prev) => {
-                    if let Some(sel) = self.options.move_up() {
+                    if let Some(sel) = self.opts_menu.move_up() {
                         self.select(sel, None);
                     }
                 }
                 (Selection::Options, Command::Down | Command::Next) => {
-                    if let Some(sel) = self.options.move_down() {
+                    if let Some(sel) = self.opts_menu.move_down() {
                         self.select(sel, None);
                     }
                 }
-                (Selection::Options, Command::Left) => self.options.move_left(),
-                (Selection::Options, Command::Right) => self.options.move_right(),
-                (Selection::Options, Command::Space | Command::Enter) => self.options.toggle(),
+                (Selection::Options, Command::Left) => self.opts_menu.move_left(),
+                (Selection::Options, Command::Right) => self.opts_menu.move_right(),
+                (Selection::Options, Command::Space | Command::Enter) => self.opts_menu.toggle(),
                 (Selection::QuitButton, Command::Enter) | (_, Command::Q) => {
                     return Some(Screen::Quit);
                 }
@@ -95,20 +99,20 @@ impl MainMenu {
     }
 
     fn play(&self) -> Game {
-        Game::new(self.options.to_options())
+        Game::new(self.globals.clone())
     }
 
     fn select(&mut self, selection: Selection, first_option: Option<bool>) {
         self.selection = selection;
         if selection == Selection::Options {
             if let Some(first) = first_option {
-                self.options.selection = if first {
+                self.opts_menu.selection = if first {
                     Some(OptKey::min())
                 } else {
                     Some(OptKey::max())
                 };
             } else {
-                self.options.selection = None;
+                self.opts_menu.selection = None;
             }
         }
     }
@@ -155,7 +159,7 @@ impl Widget for &MainMenu {
         let [options_area] = Layout::horizontal([OptionsMenu::WIDTH])
             .flex(Flex::Center)
             .areas(options_area);
-        (&self.options).render(options_area, buf);
+        (&self.opts_menu).render(options_area, buf);
 
         let qstyle = if self.selection == Selection::QuitButton {
             consts::MENU_SELECTION_STYLE
@@ -293,7 +297,7 @@ mod tests {
 
         #[test]
         fn draw_initial() {
-            let menu = MainMenu::new(Options::default());
+            let menu = MainMenu::new(Globals::default());
             let area = Rect::new(0, 0, 80, 24);
             let mut buffer = Buffer::empty(area);
             menu.render(area, &mut buffer);
@@ -346,7 +350,7 @@ mod tests {
         #[test]
         fn interact_options() {
             let area = Rect::new(0, 0, 80, 24);
-            let mut menu = MainMenu::new(Options::default());
+            let mut menu = MainMenu::new(Globals::default());
             assert!(menu
                 .handle_event(Event::Key(KeyCode::Down.into()))
                 .is_none());
@@ -612,17 +616,17 @@ mod tests {
         /// the start of the options.
         #[test]
         fn tab_wraparound() {
-            let mut menu = MainMenu::new(Options::default());
-            assert_eq!(menu.options.selection, None);
+            let mut menu = MainMenu::new(Globals::default());
+            assert_eq!(menu.opts_menu.selection, None);
             for _ in OptKey::iter() {
                 assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             }
-            assert_eq!(menu.options.selection, Some(OptKey::max()));
+            assert_eq!(menu.opts_menu.selection, Some(OptKey::max()));
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
-            assert_eq!(menu.options.selection, None);
+            assert_eq!(menu.opts_menu.selection, None);
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
-            assert_eq!(menu.options.selection, Some(OptKey::min()));
+            assert_eq!(menu.opts_menu.selection, Some(OptKey::min()));
         }
     }
 

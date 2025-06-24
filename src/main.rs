@@ -8,6 +8,7 @@ mod util;
 mod warning;
 use crate::app::App;
 use crate::options::Options;
+use crate::util::Globals;
 use crossterm::{
     event::{DisableFocusChange, EnableFocusChange},
     execute,
@@ -17,7 +18,7 @@ use std::process::ExitCode;
 use thiserror::Error;
 
 fn main() -> ExitCode {
-    let opts = match Options::load() {
+    let options = match Options::load() {
         Ok(opts) => opts,
         Err(e) => {
             let _ = writeln!(io::stderr().lock(), "ratsnake: {:?}", anyhow::Error::new(e));
@@ -30,7 +31,9 @@ fn main() -> ExitCode {
             return e.report();
         }
     };
-    let r = App::new(opts).run(terminal).map_err(MainError::App);
+    let r = App::new(Globals { options })
+        .run(terminal)
+        .map_err(MainError::App);
     let code = if let Err(e) = restore_terminal() {
         e.report()
     } else {
