@@ -5,6 +5,8 @@ on:
     branches:
       - main
   pull_request:
+  schedule:
+    - cron: '0 12 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref_name }}
@@ -21,6 +23,8 @@ jobs:
         toolchain:
           - msrv
           - stable
+          - beta
+          - nightly
         include:
           - os: macos-latest
             toolchain: stable
