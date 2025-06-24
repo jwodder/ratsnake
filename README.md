@@ -12,6 +12,8 @@ making it grow longer, but don't run into yourself!
 [Rust]: https://www.rust-lang.org
 [Ratatui]: https://ratatui.rs
 
+[![asciicast](https://asciinema.org/a/724406.svg)](https://asciinema.org/a/724406)
+
 Installation
 ============
 
