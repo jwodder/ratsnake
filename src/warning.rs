@@ -47,13 +47,10 @@ impl Warning {
     }
 
     fn from_error_messages(msgs: Vec<String>) -> Self {
-        if msgs.is_empty() {
-            return Warning {
-                lines: vec![String::from("You should never see this.")],
-                scroll_offset: 0,
-                max_scroll: 0,
-            };
-        }
+        assert!(
+            !msgs.is_empty(),
+            "Empty Vec passed to Warning::from_error_messages()"
+        );
         let mut lines = Vec::new();
         let opts = textwrap::Options::new(usize::from(Warning::TEXT_WIDTH)).break_words(true);
         lines.extend(
