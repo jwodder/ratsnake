@@ -53,8 +53,8 @@ impl Warning {
         None
     }
 
-    /// Does the text not fit in [`MAX_LINES`], necessitating scrolling and a
-    /// scrollbar?
+    /// Does the text not fit in [`MAX_LINES`][Self::MAX_LINES], necessitating
+    /// scrolling and a scrollbar?
     fn scrolling(&self) -> bool {
         self.lines.len() > usize::from(Self::MAX_LINES)
     }
