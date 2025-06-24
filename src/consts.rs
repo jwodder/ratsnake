@@ -9,7 +9,9 @@ use std::time::Duration;
 pub(crate) const TICK_PERIOD: Duration = Duration::from_millis(200);
 
 /// Draw everything inside a rectangle of this size in the center of the
-/// terminal window
+/// terminal window.
+///
+/// Cf. [`crate::util::get_display_area()`]
 pub(crate) const DISPLAY_SIZE: Size = Size {
     width: 80,
     height: 24,
