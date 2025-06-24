@@ -112,9 +112,7 @@ impl<R: Rng> Game<R> {
     }
 
     fn finalize_score(&mut self) -> PostMortem {
-        if let Some(score) =
-            NonZeroU32::new(self.score).filter(|&score| self.high_score.is_none_or(|hs| hs < score))
-        {
+        if let Some(score) = self.new_high_score() {
             self.globals.high_scores.set(self.globals.options, score);
             let warning = self.globals.high_scores.save().err().map(Warning::from);
             PostMortem {
@@ -127,6 +125,10 @@ impl<R: Rng> Game<R> {
                 warning: None,
             }
         }
+    }
+
+    fn new_high_score(&self) -> Option<NonZeroU32> {
+        NonZeroU32::new(self.score).filter(|&score| self.high_score.is_none_or(|hs| hs < score))
     }
 
     fn place_fruit(&mut self) {
@@ -395,6 +397,7 @@ mod tests {
     use crossterm::event::KeyCode;
     use rand::SeedableRng;
     use rand_chacha::ChaCha12Rng;
+    use rstest::rstest;
     use std::collections::VecDeque;
 
     const RNG_SEED: u64 = 0x0123456789ABCDEF;
@@ -752,5 +755,31 @@ mod tests {
         expected.set_style(Rect::new(46, 12, 1, 1), consts::KEY_STYLE);
         expected.set_style(Rect::new(41, 13, 1, 1), consts::KEY_STYLE);
         pretty_assertions::assert_eq!(buffer, expected);
+    }
+
+    #[rstest]
+    #[case(0, None, false)]
+    #[case(1, None, true)]
+    #[case(42, None, true)]
+    #[case(0, NonZeroU32::new(1), false)]
+    #[case(1, NonZeroU32::new(1), false)]
+    #[case(1, NonZeroU32::new(42), false)]
+    #[case(42, NonZeroU32::new(42), false)]
+    #[case(42, NonZeroU32::new(1), true)]
+    fn test_new_high_score(
+        #[case] score: u32,
+        #[case] old_high_score: Option<NonZeroU32>,
+        #[case] new: bool,
+    ) {
+        let mut game = Game::new(Globals::default());
+        game.score = score;
+        game.high_score = old_high_score;
+        if new {
+            let hs = NonZeroU32::new(score);
+            assert!(hs.is_some());
+            assert_eq!(game.new_high_score(), hs);
+        } else {
+            assert_eq!(game.new_high_score(), None);
+        }
     }
 }
