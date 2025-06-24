@@ -71,7 +71,7 @@ impl<R: Rng> Game<R> {
     pub(crate) fn process_input(&mut self) -> std::io::Result<Option<AppState>> {
         if self.running() {
             if self.next_tick.is_none() {
-                self.next_tick = Some(Instant::now() + consts::TICK_DURATION);
+                self.next_tick = Some(Instant::now() + consts::TICK_PERIOD);
             }
             let when = self.next_tick.expect("next_tick should be Some");
             let wait = when.saturating_duration_since(Instant::now());
