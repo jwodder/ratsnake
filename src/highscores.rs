@@ -1,9 +1,8 @@
 use crate::options::Options;
-use crate::util::high_scores_file_path;
+use crate::util::{high_scores_file_path, LoadError, SaveError};
 use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
 use std::collections::HashMap;
 use std::num::NonZeroU32;
-use thiserror::Error;
 
 /// A collection of the highest score achieved for various `Options` values
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -18,13 +17,14 @@ impl HighScores {
     /// creating the file's parent directories failed, if serializing the high
     /// scores failed, or if writing the serialized high scores failed.
     pub(crate) fn save(&self) -> Result<(), SaveError> {
-        let path = high_scores_file_path().ok_or_else(SaveError::no_path)?;
+        let path = high_scores_file_path().ok_or_else(|| SaveError::no_path("high scores"))?;
         if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
-            fs_err::create_dir_all(parent).map_err(SaveError::mkdir)?;
+            fs_err::create_dir_all(parent).map_err(|e| SaveError::mkdir("high scores", e))?;
         }
-        let mut src = serde_json::to_string(self).map_err(SaveError::serialize)?;
+        let mut src =
+            serde_json::to_string(self).map_err(|e| SaveError::serialize("high scores", e))?;
         src.push('\n');
-        fs_err::write(&path, &src).map_err(SaveError::write)?;
+        fs_err::write(&path, &src).map_err(|e| SaveError::write("high scores", e))?;
         Ok(())
     }
 
@@ -37,13 +37,13 @@ impl HighScores {
     /// the file could not be read, or if the file's contents could not be
     /// deserialized.
     pub(crate) fn load() -> Result<HighScores, LoadError> {
-        let path = high_scores_file_path().ok_or_else(LoadError::no_path)?;
+        let path = high_scores_file_path().ok_or_else(|| LoadError::no_path("high scores"))?;
         let src = match fs_err::read(&path) {
             Ok(src) => src,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(HighScores::default()),
-            Err(e) => return Err(LoadError::read(e)),
+            Err(e) => return Err(LoadError::read("high scores", e)),
         };
-        serde_json::from_slice(&src).map_err(LoadError::deserialize)
+        serde_json::from_slice(&src).map_err(|e| LoadError::deserialize("high scores", e))
     }
 
     /// Return the high score, if any, for the given [`Options`]
@@ -96,94 +96,4 @@ impl<'de> Deserialize<'de> for HighScores {
 struct HighScoreEntry {
     options: Options,
     score: NonZeroU32,
-}
-
-/// Error returned by [`HighScores::save()`]
-#[derive(Debug, Error)]
-#[error("Failed to save high scores to disk")]
-pub(crate) struct SaveError(#[source] SaveErrorSource);
-
-impl SaveError {
-    fn no_path() -> Self {
-        SaveError(SaveErrorSource::NoPath)
-    }
-
-    fn mkdir(e: std::io::Error) -> Self {
-        SaveError(SaveErrorSource::Mkdir(e))
-    }
-
-    fn serialize(e: serde_json::Error) -> Self {
-        SaveError(SaveErrorSource::Serialize(e))
-    }
-
-    fn write(e: std::io::Error) -> Self {
-        SaveError(SaveErrorSource::Write(e))
-    }
-}
-
-/// Source error of [`SaveError`].
-///
-/// Implementing this as separate type allows for error displays like the
-/// following, with a general message at the top level and a source message
-/// describing which part of the operation failed:
-///
-/// ```text
-/// Failed to save high scores to disk
-///
-/// Caused by:
-///     0: failed to create parent directories
-///     1: permission denied
-/// ```
-#[derive(Debug, Error)]
-enum SaveErrorSource {
-    #[error("failed to determine path to local data directory")]
-    NoPath,
-    #[error("failed to create parent directories")]
-    Mkdir(#[source] std::io::Error),
-    #[error("failed to serialize high scores")]
-    Serialize(#[source] serde_json::Error),
-    #[error("failed to write high scores to disk")]
-    Write(#[source] std::io::Error),
-}
-
-/// Error returned by [`HighScores::load()`]
-#[derive(Debug, Error)]
-#[error("Failed to load high scores from disk")]
-pub(crate) struct LoadError(#[source] LoadErrorSource);
-
-impl LoadError {
-    fn no_path() -> Self {
-        LoadError(LoadErrorSource::NoPath)
-    }
-
-    fn read(e: std::io::Error) -> Self {
-        LoadError(LoadErrorSource::Read(e))
-    }
-
-    fn deserialize(e: serde_json::Error) -> Self {
-        LoadError(LoadErrorSource::Deserialize(e))
-    }
-}
-
-/// Source error of [`LoadError`].
-///
-/// Implementing this as separate type allows for error displays like the
-/// following, with a general message at the top level and a source message
-/// describing which part of the operation failed:
-///
-/// ```text
-/// Failed to load high scores from disk
-///
-/// Caused by:
-///     0: failed to read high scores file
-///     1: permission denied
-/// ```
-#[derive(Debug, Error)]
-enum LoadErrorSource {
-    #[error("failed to determine path to local data directory")]
-    NoPath,
-    #[error("failed to read high scores file")]
-    Read(#[source] std::io::Error),
-    #[error("failed to deserialize high scores")]
-    Deserialize(#[source] serde_json::Error),
 }

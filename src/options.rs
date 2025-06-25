@@ -1,5 +1,5 @@
 use crate::consts;
-use crate::util::{options_file_path, Bounds};
+use crate::util::{options_file_path, Bounds, LoadError, SaveError};
 use enum_dispatch::enum_dispatch;
 use enum_map::Enum;
 use ratatui::layout::Size;
@@ -9,7 +9,6 @@ use serde::{
     Deserialize, Serialize,
 };
 use std::fmt;
-use thiserror::Error;
 
 /// Gameplay options
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -36,13 +35,14 @@ impl Options {
     /// creating the file's parent directories failed, if serializing the
     /// options failed, or if writing the serialized options failed.
     pub(crate) fn save(&self) -> Result<(), SaveError> {
-        let path = options_file_path().ok_or_else(SaveError::no_path)?;
+        let path = options_file_path().ok_or_else(|| SaveError::no_path("options"))?;
         if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
-            fs_err::create_dir_all(parent).map_err(SaveError::mkdir)?;
+            fs_err::create_dir_all(parent).map_err(|e| SaveError::mkdir("options", e))?;
         }
-        let mut src = serde_json::to_string(self).map_err(SaveError::serialize)?;
+        let mut src =
+            serde_json::to_string(self).map_err(|e| SaveError::serialize("options", e))?;
         src.push('\n');
-        fs_err::write(&path, &src).map_err(SaveError::write)?;
+        fs_err::write(&path, &src).map_err(|e| SaveError::write("options", e))?;
         Ok(())
     }
 
@@ -55,13 +55,13 @@ impl Options {
     /// the file could not be read, or if the file's contents could not be
     /// deserialized.
     pub(crate) fn load() -> Result<Options, LoadError> {
-        let path = options_file_path().ok_or_else(LoadError::no_path)?;
+        let path = options_file_path().ok_or_else(|| LoadError::no_path("options"))?;
         let src = match fs_err::read(&path) {
             Ok(src) => src,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Options::default()),
-            Err(e) => return Err(LoadError::read(e)),
+            Err(e) => return Err(LoadError::read("options", e)),
         };
-        serde_json::from_slice(&src).map_err(LoadError::deserialize)
+        serde_json::from_slice(&src).map_err(|e| LoadError::deserialize("options", e))
     }
 
     /// Retrieve the value of the given option as an [`OptValue`]
@@ -109,96 +109,6 @@ impl Options {
     pub(crate) fn level_bounds(&self) -> Bounds {
         Bounds::new(self.level_size.as_size(), self.wraparound)
     }
-}
-
-/// Error returned by [`Options::save()`]
-#[derive(Debug, Error)]
-#[error("Failed to save options to disk")]
-pub(crate) struct SaveError(#[source] SaveErrorSource);
-
-impl SaveError {
-    fn no_path() -> Self {
-        SaveError(SaveErrorSource::NoPath)
-    }
-
-    fn mkdir(e: std::io::Error) -> Self {
-        SaveError(SaveErrorSource::Mkdir(e))
-    }
-
-    fn serialize(e: serde_json::Error) -> Self {
-        SaveError(SaveErrorSource::Serialize(e))
-    }
-
-    fn write(e: std::io::Error) -> Self {
-        SaveError(SaveErrorSource::Write(e))
-    }
-}
-
-/// Source error of [`SaveError`].
-///
-/// Implementing this as separate type allows for error displays like the
-/// following, with a general message at the top level and a source message
-/// describing which part of the operation failed:
-///
-/// ```text
-/// Failed to save options to disk
-///
-/// Caused by:
-///     0: failed to create parent directories
-///     1: permission denied
-/// ```
-#[derive(Debug, Error)]
-enum SaveErrorSource {
-    #[error("failed to determine path to local data directory")]
-    NoPath,
-    #[error("failed to create parent directories")]
-    Mkdir(#[source] std::io::Error),
-    #[error("failed to serialize options")]
-    Serialize(#[source] serde_json::Error),
-    #[error("failed to write options to disk")]
-    Write(#[source] std::io::Error),
-}
-
-/// Error returned by [`Options::load()`]
-#[derive(Debug, Error)]
-#[error("Failed to load options from disk")]
-pub(crate) struct LoadError(#[source] LoadErrorSource);
-
-impl LoadError {
-    fn no_path() -> Self {
-        LoadError(LoadErrorSource::NoPath)
-    }
-
-    fn read(e: std::io::Error) -> Self {
-        LoadError(LoadErrorSource::Read(e))
-    }
-
-    fn deserialize(e: serde_json::Error) -> Self {
-        LoadError(LoadErrorSource::Deserialize(e))
-    }
-}
-
-/// Source error of [`LoadError`].
-///
-/// Implementing this as separate type allows for error displays like the
-/// following, with a general message at the top level and a source message
-/// describing which part of the operation failed:
-///
-/// ```text
-/// Failed to load options from disk
-///
-/// Caused by:
-///     0: failed to read options file
-///     1: permission denied
-/// ```
-#[derive(Debug, Error)]
-enum LoadErrorSource {
-    #[error("failed to determine path to local data directory")]
-    NoPath,
-    #[error("failed to read options file")]
-    Read(#[source] std::io::Error),
-    #[error("failed to deserialize options")]
-    Deserialize(#[source] serde_json::Error),
 }
 
 /// An enum of the individual option fields in [`Options`]
