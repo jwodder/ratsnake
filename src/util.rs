@@ -2,6 +2,7 @@ use crate::consts;
 use enum_map::Enum;
 use ratatui::layout::{Flex, Layout, Position, Positions, Rect, Size};
 use std::path::PathBuf;
+use thiserror::Error;
 
 /// Values that would be global state if it weren't so evil.
 ///
@@ -136,6 +137,133 @@ impl<T: Enum> DoubleEndedIterator for EnumExtIter<T> {
 impl<T: Enum> ExactSizeIterator for EnumExtIter<T> {}
 
 impl<T: Enum> std::iter::FusedIterator for EnumExtIter<T> {}
+
+/// Error returned by [`Options::save()`][crate::options::Options::save] and
+/// [`HighScores::save()`][crate::highscores::HighScores::save]
+#[derive(Debug, Error)]
+#[error("Failed to save {desc} to disk")]
+pub(crate) struct SaveError {
+    /// A description of what we were trying to save ("options" or "high
+    /// scores")
+    desc: &'static str,
+
+    /// The actual error
+    source: SaveErrorSource,
+}
+
+impl SaveError {
+    pub(crate) fn no_path(desc: &'static str) -> Self {
+        SaveError {
+            desc,
+            source: SaveErrorSource::NoPath,
+        }
+    }
+
+    pub(crate) fn mkdir(desc: &'static str, e: std::io::Error) -> Self {
+        SaveError {
+            desc,
+            source: SaveErrorSource::Mkdir(e),
+        }
+    }
+
+    pub(crate) fn serialize(desc: &'static str, e: serde_json::Error) -> Self {
+        SaveError {
+            desc,
+            source: SaveErrorSource::Serialize(e),
+        }
+    }
+
+    pub(crate) fn write(desc: &'static str, e: std::io::Error) -> Self {
+        SaveError {
+            desc,
+            source: SaveErrorSource::Write(e),
+        }
+    }
+}
+
+/// Source error of [`SaveError`].
+///
+/// Implementing this as separate type allows for error displays like the
+/// following, with a general message at the top level and a source message
+/// describing which part of the operation failed:
+///
+/// ```text
+/// Failed to save options to disk
+///
+/// Caused by:
+///     0: failed to create parent directories
+///     1: permission denied
+/// ```
+#[derive(Debug, Error)]
+enum SaveErrorSource {
+    #[error("failed to determine path to local data directory")]
+    NoPath,
+    #[error("failed to create parent directories")]
+    Mkdir(#[source] std::io::Error),
+    #[error("failed to serialize value")]
+    Serialize(#[source] serde_json::Error),
+    #[error("failed to write data to disk")]
+    Write(#[source] std::io::Error),
+}
+
+/// Error returned by [`Options::load()`][crate::options::Options::load] and
+/// [`HighScores::load()`][crate::highscores::HighScores::load]
+#[derive(Debug, Error)]
+#[error("Failed to load {desc} from disk")]
+pub(crate) struct LoadError {
+    /// A description of what we were trying to save ("options" or "high
+    /// scores")
+    desc: &'static str,
+
+    /// The actual error
+    source: LoadErrorSource,
+}
+
+impl LoadError {
+    pub(crate) fn no_path(desc: &'static str) -> Self {
+        LoadError {
+            desc,
+            source: LoadErrorSource::NoPath,
+        }
+    }
+
+    pub(crate) fn read(desc: &'static str, e: std::io::Error) -> Self {
+        LoadError {
+            desc,
+            source: LoadErrorSource::Read(e),
+        }
+    }
+
+    pub(crate) fn deserialize(desc: &'static str, e: serde_json::Error) -> Self {
+        LoadError {
+            desc,
+            source: LoadErrorSource::Deserialize(e),
+        }
+    }
+}
+
+/// Source error of [`LoadError`].
+///
+/// Implementing this as separate type allows for error displays like the
+/// following, with a general message at the top level and a source message
+/// describing which part of the operation failed:
+///
+/// ```text
+/// Failed to load options from disk
+///
+/// Caused by:
+///     0: failed to read file
+///     1: permission denied
+/// ```
+#[derive(Debug, Error)]
+enum LoadErrorSource {
+    #[error("failed to determine path to local data directory")]
+    NoPath,
+    #[error("failed to read file")]
+    Read(#[source] std::io::Error),
+    #[error("failed to deserialize file contents")]
+    Deserialize(#[source] serde_json::Error),
+}
 
 /// Produce a [`Rect`] of the given size that is centered both vertically &
 /// horizontally within `area`
