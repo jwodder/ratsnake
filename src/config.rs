@@ -9,6 +9,7 @@ use thiserror::Error;
 
 /// Program configuration read from a configuration file
 #[derive(Clone, Deserialize, Debug, Default, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct Config {
     /// Default options when no options file is present
     #[serde(default)]
@@ -155,7 +156,7 @@ pub(crate) struct FileConfig {
 }
 
 #[derive(Clone, Deserialize, Debug, Default, Eq, PartialEq)]
-#[serde(default, rename_all = "kebab-case")]
+#[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
 struct RawFileConfig {
     options_file: OptionsFile<String>,
     high_scores_dir: Option<String>,
