@@ -13,45 +13,92 @@ use crossterm::{
     event::{DisableFocusChange, EnableFocusChange},
     execute,
 };
+use lexopt::{Arg, Parser};
 use std::io::{self, ErrorKind, Write};
 use std::process::ExitCode;
 use thiserror::Error;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum Command {
+    Run,
+    Version,
+}
+
+impl Command {
+    fn from_parser(mut parser: Parser) -> Result<Command, lexopt::Error> {
+        #[expect(clippy::never_loop)]
+        while let Some(arg) = parser.next()? {
+            match arg {
+                Arg::Short('V') | Arg::Long("version") => return Ok(Command::Version),
+                _ => return Err(arg.unexpected()),
+            }
+        }
+        Ok(Command::Run)
+    }
+
+    fn run(self) -> ExitCode {
+        match self {
+            Command::Run => {
+                let options = match options::Options::load() {
+                    Ok(opts) => opts,
+                    Err(e) => {
+                        error(e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+                let high_scores = match highscores::HighScores::load() {
+                    Ok(hs) => hs,
+                    Err(e) => {
+                        error(e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+                let terminal = match init_terminal() {
+                    Ok(term) => term,
+                    Err(e) => {
+                        return e.report();
+                    }
+                };
+                let r = App::new(Globals {
+                    options,
+                    high_scores,
+                })
+                .run(terminal)
+                .map_err(MainError::App);
+                let code = if let Err(e) = restore_terminal() {
+                    e.report()
+                } else {
+                    ExitCode::SUCCESS
+                };
+                match r {
+                    Ok(()) => code,
+                    Err(e) => e.report(),
+                }
+            }
+            Command::Version => {
+                match writeln!(
+                    io::stdout().lock(),
+                    "{} {}",
+                    env!("CARGO_PKG_NAME"),
+                    env!("CARGO_PKG_VERSION")
+                )
+                .map_err(MainError::App)
+                {
+                    Ok(()) => ExitCode::SUCCESS,
+                    Err(e) => e.report(),
+                }
+            }
+        }
+    }
+}
+
 fn main() -> ExitCode {
-    let options = match options::Options::load() {
-        Ok(opts) => opts,
+    match Command::from_parser(Parser::from_env()) {
+        Ok(cmd) => cmd.run(),
         Err(e) => {
-            let _ = writeln!(io::stderr().lock(), "ratsnake: {:?}", anyhow::Error::new(e));
-            return ExitCode::FAILURE;
+            error(e);
+            ExitCode::FAILURE
         }
-    };
-    let high_scores = match highscores::HighScores::load() {
-        Ok(hs) => hs,
-        Err(e) => {
-            let _ = writeln!(io::stderr().lock(), "ratsnake: {:?}", anyhow::Error::new(e));
-            return ExitCode::FAILURE;
-        }
-    };
-    let terminal = match init_terminal() {
-        Ok(term) => term,
-        Err(e) => {
-            return e.report();
-        }
-    };
-    let r = App::new(Globals {
-        options,
-        high_scores,
-    })
-    .run(terminal)
-    .map_err(MainError::App);
-    let code = if let Err(e) = restore_terminal() {
-        e.report()
-    } else {
-        ExitCode::SUCCESS
-    };
-    match r {
-        Ok(()) => code,
-        Err(e) => e.report(),
     }
 }
 
@@ -92,12 +139,16 @@ enum MainError {
 impl MainError {
     /// If the error is not due to a broken pipe, print an error message to
     /// stderr and return a failure exit code.
-    fn report(&self) -> ExitCode {
-        if matches!(self, MainError::App(e) if e.kind() == ErrorKind::BrokenPipe) {
+    fn report(self) -> ExitCode {
+        if matches!(self, MainError::App(ref e) if e.kind() == ErrorKind::BrokenPipe) {
             ExitCode::SUCCESS
         } else {
-            let _ = writeln!(io::stderr().lock(), "ratsnake: {self}");
+            error(self);
             ExitCode::from(2)
         }
     }
+}
+
+fn error<E: Into<anyhow::Error>>(e: E) {
+    let _ = writeln!(io::stderr().lock(), "ratsnake: {:?}", e.into());
 }
