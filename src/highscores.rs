@@ -1,30 +1,41 @@
 use crate::options::Options;
-use crate::util::{high_scores_file_path, LoadError, SaveError};
+use crate::util::{data_dir, LoadError, SaveError};
 use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
 use std::collections::HashMap;
 use std::num::NonZeroU32;
+use std::path::{Path, PathBuf};
 
 /// A collection of the highest score achieved for various `Options` values
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) struct HighScores(HashMap<Options, NonZeroU32>);
 
 impl HighScores {
+    /// The name of the file within the high scores directory in which "arcade"
+    /// (non-level) high scores are saved.
+    pub(crate) const ARCADE_FILE_NAME: &str = "arcade.json";
+
+    /// Return the default filepath used for storing high score options
+    pub(crate) fn default_path() -> Option<PathBuf> {
+        // Use a directory within `data_dir()` in anticipation of eventually having
+        // to store level high scores next to the "arcade" high scores
+        data_dir().map(|p| p.join("highscores").join(Self::ARCADE_FILE_NAME))
+    }
+
     /// Save the high scores to a file on disk
     ///
     /// # Errors
     ///
-    /// Returns `Err` if the data directory path could not be determined, if
-    /// creating the file's parent directories failed, if serializing the high
-    /// scores failed, or if writing the serialized high scores failed.
-    pub(crate) fn save(&self) -> Result<(), SaveError> {
-        let path = high_scores_file_path().ok_or_else(|| SaveError::no_path("high scores"))?;
+    /// Returns `Err` if creating the file's parent directories failed, if
+    /// serializing the high scores failed, or if writing the serialized high
+    /// scores failed.
+    pub(crate) fn save(&self, path: &Path) -> Result<(), SaveError> {
         if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
             fs_err::create_dir_all(parent).map_err(|e| SaveError::mkdir("high scores", e))?;
         }
         let mut src =
             serde_json::to_string(self).map_err(|e| SaveError::serialize("high scores", e))?;
         src.push('\n');
-        fs_err::write(&path, &src).map_err(|e| SaveError::write("high scores", e))?;
+        fs_err::write(path, &src).map_err(|e| SaveError::write("high scores", e))?;
         Ok(())
     }
 
@@ -33,17 +44,16 @@ impl HighScores {
     ///
     /// # Errors
     ///
-    /// Returns `Err` if the data directory path could not be determined, if
-    /// the file could not be read, or if the file's contents could not be
-    /// deserialized.
-    pub(crate) fn load() -> Result<HighScores, LoadError> {
-        let path = high_scores_file_path().ok_or_else(|| LoadError::no_path("high scores"))?;
-        let src = match fs_err::read(&path) {
-            Ok(src) => src,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(HighScores::default()),
-            Err(e) => return Err(LoadError::read("high scores", e)),
-        };
-        serde_json::from_slice(&src).map_err(|e| LoadError::deserialize("high scores", e))
+    /// Returns `Err` if the file could not be read or if the file's contents
+    /// could not be deserialized.
+    pub(crate) fn load(path: &Path) -> Result<HighScores, LoadError> {
+        match fs_err::read(path) {
+            Ok(src) => {
+                serde_json::from_slice(&src).map_err(|e| LoadError::deserialize("high scores", e))
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(HighScores::default()),
+            Err(e) => Err(LoadError::read("high scores", e)),
+        }
     }
 
     /// Return the high score, if any, for the given [`Options`]

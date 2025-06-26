@@ -1,5 +1,5 @@
 use crate::consts;
-use crate::util::{options_file_path, Bounds, LoadError, SaveError};
+use crate::util::{data_dir, Bounds, LoadError, SaveError};
 use enum_dispatch::enum_dispatch;
 use enum_map::Enum;
 use ratatui::layout::Size;
@@ -9,59 +9,67 @@ use serde::{
     Deserialize, Serialize,
 };
 use std::fmt;
+use std::path::{Path, PathBuf};
 
 /// Gameplay options
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub(crate) struct Options {
     /// Should levels wrap around at the borders?
+    #[serde(default)]
     pub(crate) wraparound: bool,
 
     /// Should randomly-generated obstacles be placed in levels?
+    #[serde(default)]
     pub(crate) obstacles: bool,
 
     /// Number of fruits present in a level at one time
+    #[serde(default)]
     pub(crate) fruits: FruitQty,
 
     /// Size of levels
+    #[serde(default)]
     pub(crate) level_size: LevelSize,
 }
 
 impl Options {
+    /// Return the default filepath used for storing gameplay options
+    pub(crate) fn default_path() -> Option<PathBuf> {
+        data_dir().map(|p| p.join("options.json"))
+    }
+
     /// Save the options to a file on disk
     ///
     /// # Errors
     ///
-    /// Returns `Err` if the data directory path could not be determined, if
-    /// creating the file's parent directories failed, if serializing the
-    /// options failed, or if writing the serialized options failed.
-    pub(crate) fn save(&self) -> Result<(), SaveError> {
-        let path = options_file_path().ok_or_else(|| SaveError::no_path("options"))?;
+    /// Returns `Err` if creating the file's parent directories failed, if
+    /// serializing the options failed, or if writing the serialized options
+    /// failed.
+    pub(crate) fn save(&self, path: &Path) -> Result<(), SaveError> {
         if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
             fs_err::create_dir_all(parent).map_err(|e| SaveError::mkdir("options", e))?;
         }
         let mut src =
             serde_json::to_string(self).map_err(|e| SaveError::serialize("options", e))?;
         src.push('\n');
-        fs_err::write(&path, &src).map_err(|e| SaveError::write("options", e))?;
+        fs_err::write(path, &src).map_err(|e| SaveError::write("options", e))?;
         Ok(())
     }
 
-    /// Read options from a file on disk.  If the file does not exist, a
-    /// default `Options` value is returned.
+    /// Read options from a file on disk.  If the file does not exist, `None`
+    /// is returned.
     ///
     /// # Errors
     ///
-    /// Returns `Err` if the data directory path could not be determined, if
-    /// the file could not be read, or if the file's contents could not be
-    /// deserialized.
-    pub(crate) fn load() -> Result<Options, LoadError> {
-        let path = options_file_path().ok_or_else(|| LoadError::no_path("options"))?;
-        let src = match fs_err::read(&path) {
-            Ok(src) => src,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Options::default()),
-            Err(e) => return Err(LoadError::read("options", e)),
-        };
-        serde_json::from_slice(&src).map_err(|e| LoadError::deserialize("options", e))
+    /// Returns `Err` if the file could not be read or if the file's contents
+    /// could not be deserialized.
+    pub(crate) fn load(path: &Path) -> Result<Option<Options>, LoadError> {
+        match fs_err::read(path) {
+            Ok(src) => serde_json::from_slice(&src)
+                .map(Some)
+                .map_err(|e| LoadError::deserialize("options", e)),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(LoadError::read("options", e)),
+        }
     }
 
     /// Retrieve the value of the given option as an [`OptValue`]

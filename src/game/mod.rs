@@ -1,14 +1,13 @@
-mod direction;
 mod levels;
 mod paused;
 mod snake;
-use self::direction::Direction;
 use self::levels::LevelMap;
 use self::paused::{PauseOpt, Paused};
 use self::snake::Snake;
 use crate::app::Screen;
 use crate::command::Command;
 use crate::consts;
+use crate::direction::Direction;
 use crate::util::{center_rect, get_display_area, Globals};
 use crate::warning::{Warning, WarningOutcome};
 use crossterm::event::{poll, read, Event};
@@ -233,7 +232,12 @@ impl<R> Game<R> {
     fn finalize_score(&mut self) -> PostMortem {
         if let Some(score) = self.new_high_score() {
             self.globals.high_scores.set(self.globals.options, score);
-            let warning = self.globals.high_scores.save().err().map(Warning::from);
+            let warning = self
+                .globals
+                .config
+                .save_high_scores(&self.globals.high_scores)
+                .err()
+                .map(Warning::from);
             PostMortem {
                 new_high_score: true,
                 warning,
@@ -294,33 +298,34 @@ impl<R> Widget for &Game<R> {
             Block::bordered().render(block_area, buf);
         }
 
+        let glyphs = &self.globals.config.glyphs;
         let level_area = block_area.inner(Margin::new(1, 1));
         let mut level = Canvas {
             area: level_area,
             buf,
         };
         for &p in self.snake.body() {
-            level.draw_cell(p, consts::SNAKE_BODY_SYMBOL, consts::SNAKE_STYLE);
+            level.draw_cell(p, &glyphs.snake_body.symbol, glyphs.snake_body.style);
         }
         for &pos in &self.fruits {
-            level.draw_cell(pos, consts::FRUIT_SYMBOL, consts::FRUIT_STYLE);
+            level.draw_cell(pos, &glyphs.fruit.symbol, glyphs.fruit.style);
         }
         for &pos in self.map.obstacles() {
-            level.draw_cell(pos, consts::OBSTACLE_SYMBOL, consts::OBSTACLE_STYLE);
+            level.draw_cell(pos, &glyphs.obstacle.symbol, glyphs.obstacle.style);
         }
         // Draw the head last so that, if it's a collision, we overwrite
         // whatever it's colliding with
         if matches!(self.state, GameState::Dead(_)) {
             level.draw_cell(
                 self.snake.head(),
-                consts::COLLISION_SYMBOL,
-                consts::COLLISION_STYLE,
+                &glyphs.collision.symbol,
+                glyphs.collision.style,
             );
         } else {
             level.draw_cell(
                 self.snake.head(),
-                self.snake.head_symbol(),
-                consts::SNAKE_STYLE,
+                glyphs.snake_head.symbol.for_direction(self.snake.direction),
+                glyphs.snake_head.style,
             );
         }
 
@@ -385,7 +390,7 @@ impl Canvas<'_> {
     }
 
     /// Set the cell at `pos` to `symbol` with the given style
-    fn draw_cell(&mut self, pos: Position, symbol: char, style: Style) {
+    fn draw_cell<S: AsRef<str>>(&mut self, pos: Position, symbol: S, style: Style) {
         let Some(x) = self.area.x.checked_add(pos.x) else {
             return;
         };
@@ -393,7 +398,7 @@ impl Canvas<'_> {
             return;
         };
         if let Some(cell) = self.buf.cell_mut((x, y)) {
-            cell.set_char(symbol);
+            cell.set_symbol(symbol.as_ref());
             cell.set_style(Style::reset().patch(style));
         }
     }

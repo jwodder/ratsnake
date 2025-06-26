@@ -1,7 +1,7 @@
 use crate::consts;
 use enum_map::Enum;
 use ratatui::layout::{Flex, Layout, Position, Positions, Rect, Size};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 /// Values that would be global state if it weren't so evil.
@@ -10,6 +10,9 @@ use thiserror::Error;
 /// next screen when transitioning.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) struct Globals {
+    /// Program configuration
+    pub(crate) config: crate::config::Config,
+
     /// Gameplay options
     pub(crate) options: crate::options::Options,
 
@@ -289,18 +292,26 @@ pub(crate) fn get_display_area(buffer_area: Rect) -> Rect {
 /// Return the path to the directory in which `ratsnake` should store data
 /// files.  Returns `None` if no appropriate directory path is defined for this
 /// OS.
-fn data_dir() -> Option<PathBuf> {
+pub(crate) fn data_dir() -> Option<PathBuf> {
     dirs::data_local_dir().map(|p| p.join("ratsnake"))
 }
 
-/// Return the path to the file in which gameplay options should be stored
-pub(crate) fn options_file_path() -> Option<PathBuf> {
-    data_dir().map(|p| p.join("options.json"))
+/// If `path` starts with a leading tilde component, replace it with the user's
+/// home directory.
+pub(crate) fn expanduser(path: &str) -> Result<PathBuf, NoHomeError> {
+    // The expanduser crate doesn't compile on Windows and is unmaintained, so
+    // we have to roll our own.
+    let path = Path::new(path);
+    let mut parts = path.components();
+    if parts.next().is_some_and(|p| p.as_os_str() == "~") {
+        let mut path = dirs::home_dir().ok_or(NoHomeError)?;
+        path.extend(parts);
+        Ok(path)
+    } else {
+        Ok(path.to_owned())
+    }
 }
 
-/// Return the path to the file in which high scores should be stored
-pub(crate) fn high_scores_file_path() -> Option<PathBuf> {
-    // Use a directory within `data_dir()` in anticipation of eventually having
-    // to store level high scores next to the "main" high scores
-    data_dir().map(|p| p.join("highscores").join("arcade.json"))
-}
+#[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
+#[error("could not determine path to home directory")]
+pub(crate) struct NoHomeError;

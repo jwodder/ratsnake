@@ -77,7 +77,7 @@ impl MainMenu {
                 (Selection::PlayButton, Command::Enter) | (_, Command::P) => {
                     let options = self.opts_menu.to_options();
                     self.globals.options = options;
-                    match options.save() {
+                    match self.globals.config.save_options(options) {
                         Ok(()) => return Some(Screen::Game(self.play())),
                         Err(e) => self.state = MenuState::SaveWarning(Warning::from(e)),
                     }

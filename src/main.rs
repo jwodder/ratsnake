@@ -1,6 +1,8 @@
 mod app;
 mod command;
+mod config;
 mod consts;
+mod direction;
 mod game;
 mod highscores;
 mod menu;
@@ -8,41 +10,50 @@ mod options;
 mod util;
 mod warning;
 use crate::app::App;
+use crate::config::Config;
 use crate::util::Globals;
 use anyhow::Context;
 use crossterm::{
     event::{DisableFocusChange, EnableFocusChange},
     execute,
 };
-use lexopt::{Arg, Parser};
+use lexopt::{Arg, Parser, ValueExt};
 use std::io::{self, ErrorKind, Write};
+use std::path::PathBuf;
 use std::process::ExitCode;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum Command {
-    Run,
+    Run(ConfigSource),
+    Help,
     Version,
 }
 
 impl Command {
     fn from_parser(mut parser: Parser) -> Result<Command, lexopt::Error> {
-        #[expect(clippy::never_loop)]
+        let mut cfg_src = ConfigSource::DefaultPath;
         while let Some(arg) = parser.next()? {
             match arg {
+                Arg::Short('h') | Arg::Long("help") => return Ok(Command::Help),
                 Arg::Short('V') | Arg::Long("version") => return Ok(Command::Version),
+                Arg::Short('c') | Arg::Long("config") => {
+                    cfg_src = ConfigSource::Path(parser.value()?.parse()?);
+                }
                 _ => return Err(arg.unexpected()),
             }
         }
-        Ok(Command::Run)
+        Ok(Command::Run(cfg_src))
     }
 
     fn run(self) -> anyhow::Result<()> {
         match self {
-            Command::Run => {
-                let options = options::Options::load()?;
-                let high_scores = highscores::HighScores::load()?;
+            Command::Run(cfg_src) => {
+                let config = cfg_src.load()?;
+                let options = config.load_options()?;
+                let high_scores = config.load_high_scores()?;
                 let terminal = init_terminal()?;
                 let r = App::new(Globals {
+                    config,
                     options,
                     high_scores,
                 })
@@ -57,6 +68,44 @@ impl Command {
                     }
                 }
             }
+            Command::Help => {
+                let mut stdout = io::stdout().lock();
+                writeln!(&mut stdout, "Usage: ratsnake [<options>]")?;
+                writeln!(&mut stdout)?;
+                writeln!(&mut stdout, "Snake game in Rust+Ratatui")?;
+                writeln!(&mut stdout)?;
+                writeln!(
+                    &mut stdout,
+                    "Visit <https://github.com/jwodder/ratsnake> for more information."
+                )?;
+                writeln!(&mut stdout)?;
+                writeln!(&mut stdout, "Options:")?;
+                writeln!(&mut stdout, "  -c <file>, --config <file>")?;
+                writeln!(
+                    &mut stdout,
+                    "                    Read configuration settings from <file>."
+                )?;
+                writeln!(&mut stdout)?;
+                if let Ok(p) = Config::default_path() {
+                    writeln!(
+                        &mut stdout,
+                        "                    [Default configuration file: {}]",
+                        p.display()
+                    )?;
+                } else {
+                    writeln!(&mut stdout, "                    [Warning: could not determine default configuration file]")?;
+                }
+                writeln!(&mut stdout)?;
+                writeln!(
+                    &mut stdout,
+                    "  -h, --help        Display this help message and exit"
+                )?;
+                writeln!(
+                    &mut stdout,
+                    "  -V, --version     Show the program version and exit"
+                )?;
+                Ok(())
+            }
             Command::Version => {
                 writeln!(
                     io::stdout().lock(),
@@ -67,6 +116,22 @@ impl Command {
                 Ok(())
             }
         }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum ConfigSource {
+    DefaultPath,
+    Path(PathBuf),
+}
+
+impl ConfigSource {
+    fn load(&self) -> anyhow::Result<Config> {
+        match self {
+            ConfigSource::DefaultPath => Config::load(&Config::default_path()?, true),
+            ConfigSource::Path(p) => Config::load(p, false),
+        }
+        .map_err(Into::into)
     }
 }
 
