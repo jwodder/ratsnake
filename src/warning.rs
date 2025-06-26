@@ -133,7 +133,7 @@ impl<E: std::error::Error> From<E> for Warning {
         let mut source = e.source();
         while let Some(src) = source {
             msgs.push(src.to_string());
-            source = e.source();
+            source = src.source();
         }
         Warning::from_error_messages(msgs)
     }
