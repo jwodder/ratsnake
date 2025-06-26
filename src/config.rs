@@ -6,7 +6,7 @@ use thiserror::Error;
 #[derive(Clone, Deserialize, Debug, Default, Eq, PartialEq)]
 pub(crate) struct Config {
     #[serde(default)]
-    options: Options,
+    pub(crate) options: Options,
 }
 
 impl Config {

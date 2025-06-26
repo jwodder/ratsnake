@@ -46,7 +46,7 @@ impl Command {
         match self {
             Command::Run(cfg_src) => {
                 let config = cfg_src.load()?;
-                let options = options::Options::load()?;
+                let options = options::Options::load()?.unwrap_or(config.options);
                 let high_scores = highscores::HighScores::load()?;
                 let terminal = init_terminal()?;
                 let r = App::new(Globals {
