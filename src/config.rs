@@ -258,7 +258,7 @@ impl<'de> Deserialize<'de> for OptionsFile<String> {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-#[serde(default, rename_all = "kebab-case")]
+#[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
 pub(crate) struct GlyphConfig {
     pub(crate) snake_head: SnakeHeadConfig,
     pub(crate) snake_body: Glyph,
@@ -296,6 +296,7 @@ impl Default for GlyphConfig {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct Glyph {
     pub(crate) symbol: Symbol,
 
@@ -372,6 +373,7 @@ impl<'de> Deserialize<'de> for Symbol {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct SnakeHeadConfig {
     pub(crate) symbol: SnakeHeadSymbol,
 
@@ -398,7 +400,7 @@ impl Default for SnakeHeadConfig {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-#[serde(untagged)]
+#[serde(deny_unknown_fields, untagged)]
 pub(crate) enum SnakeHeadSymbol {
     All(Symbol),
     Split {
