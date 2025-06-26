@@ -1,7 +1,8 @@
 use crate::options::Options;
 use crate::util::{expanduser, LoadError, NoHomeError, SaveError};
-use serde::Deserialize;
+use serde::{de::Deserializer, Deserialize};
 use std::borrow::Cow;
+use std::fmt;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -45,28 +46,26 @@ impl Config {
 
     /// Return the filepath at which gameplay options should be stored: the
     /// file given in the configuration or, if that is not set, the default
-    /// options file path.  Return `None` if no path is present in the
-    /// configuration and the default path could not be computed.
-    fn options_file(&self) -> Option<Cow<'_, Path>> {
-        self.files
-            .options_file
-            .as_deref()
-            .map(Cow::from)
-            .or_else(|| Options::default_path().map(Cow::from))
+    /// options file path.  Return `None` if saving & loading of gameplay
+    /// options is disabled.
+    fn options_file(&self) -> Result<Option<Cow<'_, Path>>, NoHomeError> {
+        match self.files.options_file {
+            OptionsFile::Path(ref path) => Ok(Some(Cow::from(path))),
+            OptionsFile::Default => match Options::default_path() {
+                Some(path) => Ok(Some(Cow::from(path))),
+                None => Err(NoHomeError),
+            },
+            OptionsFile::Off => Ok(None),
+        }
     }
 
-    /// Load gameplay options from a file.  If the file does not exist, `self.options`
-    /// is returned.
-    ///
-    /// If `self.files.save_options` is `false`, `self.options` is returned
-    /// without reading anything from disk.
+    /// Load gameplay options from a file, if enabled.  If the file does not
+    /// exist, `self.options` is returned.
     pub(crate) fn load_options(&self) -> Result<Options, LoadError> {
-        let r = if !self.files.save_options {
-            Ok(None)
-        } else if let Some(p) = self.options_file() {
-            Options::load(&p)
-        } else {
-            Err(LoadError::no_path("options"))
+        let r = match self.options_file() {
+            Ok(Some(p)) => Options::load(&p),
+            Ok(None) => Ok(None),
+            Err(_) => Err(LoadError::no_path("options")),
         };
         match r {
             Ok(Some(opts)) => Ok(opts),
@@ -75,54 +74,27 @@ impl Config {
         }
     }
 
-    /// Save the given gameplay options to a file.
-    ///
-    /// If `self.files.save_options` is `false`, nothing is saved.
+    /// Save the given gameplay options to a file, if enabled.
     pub(crate) fn save_options(&self, options: Options) -> Result<(), SaveError> {
-        if !self.files.save_options {
-            return Ok(());
-        }
-        if let Some(p) = self.options_file() {
-            options.save(&p)
-        } else {
-            Err(SaveError::no_path("options"))
+        match self.options_file() {
+            Ok(Some(p)) => options.save(&p),
+            Ok(None) => Ok(()),
+            Err(_) => Err(SaveError::no_path("options")),
         }
     }
 }
 
-#[derive(Clone, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Clone, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(try_from = "RawFileConfig")]
 pub(crate) struct FileConfig {
     /// Path at which gameplay options should be stored
-    options_file: Option<PathBuf>,
-
-    /// Whether to load & save gameplay options in a file
-    save_options: bool,
+    options_file: OptionsFile<PathBuf>,
 }
 
-impl Default for FileConfig {
-    fn default() -> FileConfig {
-        FileConfig {
-            options_file: None,
-            save_options: true,
-        }
-    }
-}
-
-#[derive(Clone, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Clone, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(default, rename_all = "kebab-case")]
 struct RawFileConfig {
-    options_file: Option<String>,
-    save_options: bool,
-}
-
-impl Default for RawFileConfig {
-    fn default() -> RawFileConfig {
-        RawFileConfig {
-            options_file: None,
-            save_options: true,
-        }
-    }
+    options_file: OptionsFile<String>,
 }
 
 impl TryFrom<RawFileConfig> for FileConfig {
@@ -130,9 +102,73 @@ impl TryFrom<RawFileConfig> for FileConfig {
 
     fn try_from(value: RawFileConfig) -> Result<FileConfig, NoHomeError> {
         Ok(FileConfig {
-            options_file: value.options_file.as_deref().map(expanduser).transpose()?,
-            save_options: value.save_options,
+            options_file: value.options_file.expanduser()?,
         })
+    }
+}
+
+/// Possible settings for the `files.options-file` configuration
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+enum OptionsFile<T> {
+    /// Save & load gameplay options to/from the given path
+    Path(T),
+
+    /// Save & load gameplay options to/from the default path
+    #[default]
+    Default,
+
+    /// Do not save or load gameplay options to/from disk
+    Off,
+}
+
+impl OptionsFile<String> {
+    fn expanduser(self) -> Result<OptionsFile<PathBuf>, NoHomeError> {
+        match self {
+            OptionsFile::Path(p) => Ok(OptionsFile::Path(expanduser(&p)?)),
+            OptionsFile::Default => Ok(OptionsFile::Default),
+            OptionsFile::Off => Ok(OptionsFile::Off),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for OptionsFile<String> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Visitor;
+
+        impl serde::de::Visitor<'_> for Visitor {
+            type Value = OptionsFile<String>;
+
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("a string or boolean")
+            }
+
+            fn visit_bool<E>(self, input: bool) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                if input {
+                    Ok(OptionsFile::Default)
+                } else {
+                    Ok(OptionsFile::Off)
+                }
+            }
+
+            fn visit_str<E>(self, input: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(OptionsFile::Path(input.to_owned()))
+            }
+
+            fn visit_string<E>(self, input: String) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(OptionsFile::Path(input))
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
     }
 }
 
@@ -144,4 +180,92 @@ pub(crate) enum ConfigError {
     Read(#[from] std::io::Error),
     #[error("failed to parse configuration file")]
     Parse(#[from] toml::de::Error),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::NamedTempFile;
+
+    #[test]
+    fn options_file_path() {
+        let tmp = NamedTempFile::new().unwrap();
+        std::fs::write(
+            tmp.path(),
+            concat!(
+                "[files]\n",
+                "options-file = \"/home/luser/stuff/ratsnake/options.json\"\n"
+            ),
+        )
+        .unwrap();
+        let cfg = Config::load(tmp.path(), false).unwrap();
+        assert_eq!(
+            cfg,
+            Config {
+                files: FileConfig {
+                    options_file: OptionsFile::Path(PathBuf::from(
+                        "/home/luser/stuff/ratsnake/options.json"
+                    )),
+                },
+                ..Config::default()
+            }
+        );
+        assert_eq!(
+            cfg.options_file(),
+            Ok(Some(Cow::from(PathBuf::from(
+                "/home/luser/stuff/ratsnake/options.json"
+            ))))
+        );
+    }
+
+    #[test]
+    fn options_file_missing() {
+        let tmp = NamedTempFile::new().unwrap();
+        std::fs::write(tmp.path(), "[files]\n").unwrap();
+        let cfg = Config::load(tmp.path(), false).unwrap();
+        assert_eq!(
+            cfg,
+            Config {
+                files: FileConfig {
+                    options_file: OptionsFile::Default,
+                },
+                ..Config::default()
+            }
+        );
+        assert!(cfg.options_file().unwrap().is_some());
+    }
+
+    #[test]
+    fn options_file_true() {
+        let tmp = NamedTempFile::new().unwrap();
+        std::fs::write(tmp.path(), "[files]\noptions-file = true\n").unwrap();
+        let cfg = Config::load(tmp.path(), false).unwrap();
+        assert_eq!(
+            cfg,
+            Config {
+                files: FileConfig {
+                    options_file: OptionsFile::Default,
+                },
+                ..Config::default()
+            }
+        );
+        assert!(cfg.options_file().unwrap().is_some());
+    }
+
+    #[test]
+    fn options_file_false() {
+        let tmp = NamedTempFile::new().unwrap();
+        std::fs::write(tmp.path(), "[files]\noptions-file = false\n").unwrap();
+        let cfg = Config::load(tmp.path(), false).unwrap();
+        assert_eq!(
+            cfg,
+            Config {
+                files: FileConfig {
+                    options_file: OptionsFile::Off,
+                },
+                ..Config::default()
+            }
+        );
+        assert_eq!(cfg.options_file(), Ok(None));
+    }
 }
