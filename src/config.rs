@@ -43,18 +43,28 @@ impl Config {
         toml::from_str(&content).map_err(Into::into)
     }
 
-    /// Load options from the file given in the configuration or, if that is
-    /// not set, from the default options file path.  In the latter case, if
-    /// the file does not exist, `self.options` is returned.
+    /// Return the filepath at which gameplay options should be stored: the
+    /// file given in the configuration or, if that is not set, the default
+    /// options file path.  Return `None` if no path is present in the
+    /// configuration and the default path could not be computed.
+    fn options_file(&self) -> Option<Cow<'_, Path>> {
+        self.files
+            .options_file
+            .as_deref()
+            .map(Cow::from)
+            .or_else(|| Options::default_path().map(Cow::from))
+    }
+
+    /// Load gameplay options from a file.  If the file does not exist, `self.options`
+    /// is returned.
     ///
-    /// If `self.files.save_options` is `false`, `self.options` is returned.
+    /// If `self.files.save_options` is `false`, `self.options` is returned
+    /// without reading anything from disk.
     pub(crate) fn load_options(&self) -> Result<Options, LoadError> {
         let r = if !self.files.save_options {
             Ok(None)
-        } else if let Some(ref p) = self.files.options_file {
-            Options::load(p, false)
-        } else if let Some(p) = Options::default_path() {
-            Options::load(&p, true)
+        } else if let Some(p) = self.options_file() {
+            Options::load(&p)
         } else {
             Err(LoadError::no_path("options"))
         };
@@ -65,21 +75,14 @@ impl Config {
         }
     }
 
-    /// Save the given options to the file given in the configuration or, if
-    /// that is not set, to the default options file path.
+    /// Save the given gameplay options to a file.
     ///
     /// If `self.files.save_options` is `false`, nothing is saved.
     pub(crate) fn save_options(&self, options: Options) -> Result<(), SaveError> {
         if !self.files.save_options {
             return Ok(());
         }
-        if let Some(p) = self
-            .files
-            .options_file
-            .as_deref()
-            .map(Cow::from)
-            .or_else(|| Options::default_path().map(Cow::from))
-        {
+        if let Some(p) = self.options_file() {
             options.save(&p)
         } else {
             Err(SaveError::no_path("options"))
