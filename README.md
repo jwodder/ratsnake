@@ -4,7 +4,7 @@
 [![Minimum Supported Rust Version](https://img.shields.io/badge/MSRV-1.82-orange)](https://www.rust-lang.org)
 [![MIT License](https://img.shields.io/github/license/jwodder/ratsnake.svg)](https://opensource.org/licenses/MIT)
 
-[GitHub](https://github.com/jwodder/ratsnake) | [crates.io](https://crates.io/crates/ratsnake) | [Issues](https://github.com/jwodder/ratsnake/issues)
+[GitHub](https://github.com/jwodder/ratsnake) | [crates.io](https://crates.io/crates/ratsnake) | [Issues](https://github.com/jwodder/ratsnake/issues) | [Changelog](https://github.com/jwodder/ratsnake/blob/main/CHANGELOG.md)
 
 `ratsnake` is an implementation of the video game [Snake][] in [Rust][] built
 using the [Ratatui][] library.  Guide the snake around the level to eat fruits,
@@ -29,7 +29,8 @@ Usage
 =====
 
 Run `ratsnake` to bring up the program's main menu.  The `ratsnake` program
-currently does not recognize any command-line options.
+currently does not recognize any command-line options other than
+`-V`/`--version`.
 
 `ratsnake` is optimized for display on 80 column by 24 line terminals.  If your
 terminal is bigger than this, the interface will be centered in the middle.  If

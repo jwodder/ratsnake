@@ -9,95 +9,107 @@ mod util;
 mod warning;
 use crate::app::App;
 use crate::util::Globals;
+use anyhow::Context;
 use crossterm::{
     event::{DisableFocusChange, EnableFocusChange},
     execute,
 };
+use lexopt::{Arg, Parser};
 use std::io::{self, ErrorKind, Write};
 use std::process::ExitCode;
-use thiserror::Error;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum Command {
+    Run,
+    Version,
+}
+
+impl Command {
+    fn from_parser(mut parser: Parser) -> Result<Command, lexopt::Error> {
+        #[expect(clippy::never_loop)]
+        while let Some(arg) = parser.next()? {
+            match arg {
+                Arg::Short('V') | Arg::Long("version") => return Ok(Command::Version),
+                _ => return Err(arg.unexpected()),
+            }
+        }
+        Ok(Command::Run)
+    }
+
+    fn run(self) -> anyhow::Result<()> {
+        match self {
+            Command::Run => {
+                let options = options::Options::load()?;
+                let high_scores = highscores::HighScores::load()?;
+                let terminal = init_terminal()?;
+                let r = App::new(Globals {
+                    options,
+                    high_scores,
+                })
+                .run(terminal)
+                .map_err(anyhow::Error::from);
+                match restore_terminal() {
+                    Ok(()) => r,
+                    Err(e) if r.is_ok() => Err(e),
+                    Err(e) => {
+                        errmsg(e);
+                        r
+                    }
+                }
+            }
+            Command::Version => {
+                writeln!(
+                    io::stdout().lock(),
+                    "{} {}",
+                    env!("CARGO_PKG_NAME"),
+                    env!("CARGO_PKG_VERSION")
+                )?;
+                Ok(())
+            }
+        }
+    }
+}
 
 fn main() -> ExitCode {
-    let options = match options::Options::load() {
-        Ok(opts) => opts,
+    match Command::from_parser(Parser::from_env())
+        .map_err(anyhow::Error::from)
+        .and_then(Command::run)
+    {
+        Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            let _ = writeln!(io::stderr().lock(), "ratsnake: {:?}", anyhow::Error::new(e));
-            return ExitCode::FAILURE;
+            for cause in e.chain() {
+                if let Some(ioerr) = cause.downcast_ref::<io::Error>() {
+                    if ioerr.kind() == ErrorKind::BrokenPipe {
+                        return ExitCode::SUCCESS;
+                    }
+                }
+            }
+            errmsg(e);
+            ExitCode::FAILURE
         }
-    };
-    let high_scores = match highscores::HighScores::load() {
-        Ok(hs) => hs,
-        Err(e) => {
-            let _ = writeln!(io::stderr().lock(), "ratsnake: {:?}", anyhow::Error::new(e));
-            return ExitCode::FAILURE;
-        }
-    };
-    let terminal = match init_terminal() {
-        Ok(term) => term,
-        Err(e) => {
-            return e.report();
-        }
-    };
-    let r = App::new(Globals {
-        options,
-        high_scores,
-    })
-    .run(terminal)
-    .map_err(MainError::App);
-    let code = if let Err(e) = restore_terminal() {
-        e.report()
-    } else {
-        ExitCode::SUCCESS
-    };
-    match r {
-        Ok(()) => code,
-        Err(e) => e.report(),
     }
 }
 
 /// Initialize the terminal, including enabling focus events
-fn init_terminal() -> Result<ratatui::DefaultTerminal, MainError> {
-    let terminal = ratatui::try_init().map_err(MainError::Init)?;
+fn init_terminal() -> anyhow::Result<ratatui::DefaultTerminal> {
+    let terminal = ratatui::try_init().context("failed to set up terminal")?;
     match execute!(io::stdout(), EnableFocusChange) {
         Ok(()) => Ok(terminal),
         Err(e) => {
             ratatui::restore();
-            Err(MainError::Init(e))
+            Err(e).context("failed to set up terminal")
         }
     }
 }
 
 /// Clean up the terminal, undoing the changes made by [`init_terminal()`]
-fn restore_terminal() -> Result<(), MainError> {
+fn restore_terminal() -> anyhow::Result<()> {
     execute!(io::stdout(), DisableFocusChange)
         .and(ratatui::try_restore())
-        .map_err(MainError::Restore)
+        .context("failed to clean up terminal")
 }
 
-#[derive(Debug, Error)]
-enum MainError {
-    /// An error occurred while initializing the terminal
-    #[error("failed to set up terminal: {0}")]
-    Init(io::Error),
-
-    /// An error occurred inside the application proper
-    #[error(transparent)]
-    App(io::Error),
-
-    /// An error occurred while cleaning up the terminal
-    #[error("failed to clean up terminal: {0}")]
-    Restore(io::Error),
-}
-
-impl MainError {
-    /// If the error is not due to a broken pipe, print an error message to
-    /// stderr and return a failure exit code.
-    fn report(&self) -> ExitCode {
-        if matches!(self, MainError::App(e) if e.kind() == ErrorKind::BrokenPipe) {
-            ExitCode::SUCCESS
-        } else {
-            let _ = writeln!(io::stderr().lock(), "ratsnake: {self}");
-            ExitCode::from(2)
-        }
-    }
+/// Report an error to stderr, discarding any errors that occur in the process.
+fn errmsg(e: anyhow::Error) {
+    let _ = writeln!(io::stderr().lock(), "ratsnake: {e:?}");
 }
