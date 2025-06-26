@@ -48,7 +48,7 @@ impl Command {
         match self {
             Command::Run(cfg_src) => {
                 let config = cfg_src.load()?;
-                let options = options::Options::load()?.unwrap_or(config.options);
+                let options = config.load_options()?;
                 let high_scores = highscores::HighScores::load()?;
                 let terminal = init_terminal()?;
                 let r = App::new(Globals {
@@ -127,13 +127,10 @@ enum ConfigSource {
 impl ConfigSource {
     fn load(&self) -> anyhow::Result<Config> {
         match self {
-            ConfigSource::DefaultPath => match Config::load(&Config::default_path()?) {
-                Ok(config) => Ok(config),
-                Err(e) if e.is_not_found() => Ok(Config::default()),
-                Err(e) => Err(e.into()),
-            },
-            ConfigSource::Path(p) => Config::load(p).map_err(Into::into),
+            ConfigSource::DefaultPath => Config::load(&Config::default_path()?, true),
+            ConfigSource::Path(p) => Config::load(p, false),
         }
+        .map_err(Into::into)
     }
 }
 

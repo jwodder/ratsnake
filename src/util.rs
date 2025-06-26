@@ -292,13 +292,8 @@ pub(crate) fn get_display_area(buffer_area: Rect) -> Rect {
 /// Return the path to the directory in which `ratsnake` should store data
 /// files.  Returns `None` if no appropriate directory path is defined for this
 /// OS.
-fn data_dir() -> Option<PathBuf> {
+pub(crate) fn data_dir() -> Option<PathBuf> {
     dirs::data_local_dir().map(|p| p.join("ratsnake"))
-}
-
-/// Return the path to the file in which gameplay options should be stored
-pub(crate) fn options_file_path() -> Option<PathBuf> {
-    data_dir().map(|p| p.join("options.json"))
 }
 
 /// Return the path to the file in which high scores should be stored
