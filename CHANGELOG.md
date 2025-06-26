@@ -1,5 +1,5 @@
-v0.2.0 (in development)
------------------------
+v0.1.1 (2025-06-26)
+-------------------
 - Added a `--version` option
 - **Bugfix**: Fix a freeze when an error occurs while writing options or high
   scores to disk

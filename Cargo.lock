@@ -563,7 +563,7 @@ dependencies = [
 
 [[package]]
 name = "ratsnake"
-version = "0.2.0-dev"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "crossterm 0.29.0",
