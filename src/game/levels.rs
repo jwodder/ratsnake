@@ -1,6 +1,6 @@
-use super::direction::Direction;
 use super::snake::Snake;
 use crate::consts;
+use crate::direction::Direction;
 use crate::util::Bounds;
 use rand::{
     distr::{Bernoulli, Distribution},

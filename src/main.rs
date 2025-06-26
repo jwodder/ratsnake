@@ -2,6 +2,7 @@ mod app;
 mod command;
 mod config;
 mod consts;
+mod direction;
 mod game;
 mod highscores;
 mod menu;

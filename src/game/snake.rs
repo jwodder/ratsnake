@@ -1,5 +1,5 @@
-use super::direction::Direction;
 use crate::consts;
+use crate::direction::Direction;
 use crate::util::Bounds;
 use ratatui::layout::Position;
 use std::collections::VecDeque;
@@ -40,16 +40,6 @@ impl Snake {
     /// Return the position of the snake's head
     pub(super) fn head(&self) -> Position {
         self.head
-    }
-
-    /// Return the glyph to use for drawing the snake's head
-    pub(super) fn head_symbol(&self) -> char {
-        match self.direction {
-            Direction::North => consts::SNAKE_HEAD_NORTH_SYMBOL,
-            Direction::South => consts::SNAKE_HEAD_SOUTH_SYMBOL,
-            Direction::East => consts::SNAKE_HEAD_EAST_SYMBOL,
-            Direction::West => consts::SNAKE_HEAD_WEST_SYMBOL,
-        }
     }
 
     /// Return the positions of the cells in the snake's body
