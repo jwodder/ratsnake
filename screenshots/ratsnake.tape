@@ -5,7 +5,7 @@ Set FontSize 12
 Set Width 628
 Set Height 350
 Set Padding 0
-Type "cargo run"
+Type "cargo run -- -c tape-cfg.toml"
 Enter
 Sleep 2s
 Screenshot mainmenu.png
