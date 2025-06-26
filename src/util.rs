@@ -1,7 +1,7 @@
 use crate::consts;
 use enum_map::Enum;
 use ratatui::layout::{Flex, Layout, Position, Positions, Rect, Size};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 /// Values that would be global state if it weren't so evil.
@@ -302,3 +302,23 @@ pub(crate) fn high_scores_file_path() -> Option<PathBuf> {
     // to store level high scores next to the "main" high scores
     data_dir().map(|p| p.join("highscores").join("arcade.json"))
 }
+
+/// If `path` starts with a leading tilde component, replace it with the user's
+/// home directory.
+pub(crate) fn expanduser(path: &str) -> Result<PathBuf, NoHomeError> {
+    // The expanduser crate doesn't compile on Windows and is unmaintained, so
+    // we have to roll our own.
+    let path = Path::new(path);
+    let mut parts = path.components();
+    if parts.next().is_some_and(|p| p.as_os_str() == "~") {
+        let mut path = dirs::home_dir().ok_or(NoHomeError)?;
+        path.extend(parts);
+        Ok(path)
+    } else {
+        Ok(path.to_owned())
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
+#[error("could not determine path to home directory")]
+pub(crate) struct NoHomeError;

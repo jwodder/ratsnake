@@ -1,5 +1,5 @@
 use crate::options::Options;
-use crate::util::{LoadError, SaveError};
+use crate::util::{expanduser, LoadError, NoHomeError, SaveError};
 use serde::Deserialize;
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
@@ -126,11 +126,11 @@ impl Default for RawFileConfig {
 }
 
 impl TryFrom<RawFileConfig> for FileConfig {
-    type Error = std::io::Error;
+    type Error = NoHomeError;
 
-    fn try_from(value: RawFileConfig) -> Result<FileConfig, std::io::Error> {
+    fn try_from(value: RawFileConfig) -> Result<FileConfig, NoHomeError> {
         Ok(FileConfig {
-            options_file: value.options_file.map(expanduser::expanduser).transpose()?,
+            options_file: value.options_file.as_deref().map(expanduser).transpose()?,
             save_options: value.save_options,
         })
     }
