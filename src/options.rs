@@ -56,21 +56,20 @@ impl Options {
     }
 
     /// Read options from a file on disk.  If the file does not exist and
-    /// `allow_missing` is true, a default `Options` value is returned.
+    /// `allow_missing` is true, `None` is returned.
     ///
     /// # Errors
     ///
     /// Returns `Err` if the file could not be read or if the file's contents
     /// could not be deserialized.
-    pub(crate) fn load(path: &Path, allow_missing: bool) -> Result<Options, LoadError> {
-        let src = match fs_err::read(path) {
-            Ok(src) => src,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound && allow_missing => {
-                return Ok(Options::default())
-            }
-            Err(e) => return Err(LoadError::read("options", e)),
-        };
-        serde_json::from_slice(&src).map_err(|e| LoadError::deserialize("options", e))
+    pub(crate) fn load(path: &Path, allow_missing: bool) -> Result<Option<Options>, LoadError> {
+        match fs_err::read(path) {
+            Ok(src) => serde_json::from_slice(&src)
+                .map(Some)
+                .map_err(|e| LoadError::deserialize("options", e)),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound && allow_missing => Ok(None),
+            Err(e) => Err(LoadError::read("options", e)),
+        }
     }
 
     /// Retrieve the value of the given option as an [`OptValue`]

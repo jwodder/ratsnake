@@ -45,14 +45,23 @@ impl Config {
 
     /// Load options from the file given in the configuration or, if that is
     /// not set, from the default options file path.  In the latter case, if
-    /// the file does not exist, a default `Options` value is returned.
+    /// the file does not exist, `self.options` is returned.
+    ///
+    /// If `self.files.save_options` is `false`, `self.options` is returned.
     pub(crate) fn load_options(&self) -> Result<Options, LoadError> {
-        if let Some(ref p) = self.files.options_file {
+        let r = if !self.files.save_options {
+            Ok(None)
+        } else if let Some(ref p) = self.files.options_file {
             Options::load(p, false)
         } else if let Some(p) = Options::default_path() {
             Options::load(&p, true)
         } else {
             Err(LoadError::no_path("options"))
+        };
+        match r {
+            Ok(Some(opts)) => Ok(opts),
+            Ok(None) => Ok(self.options),
+            Err(e) => Err(e),
         }
     }
 
