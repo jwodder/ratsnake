@@ -24,6 +24,7 @@ use std::process::ExitCode;
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum Command {
     Run(ConfigSource),
+    Help,
     Version,
 }
 
@@ -32,6 +33,7 @@ impl Command {
         let mut cfg_src = ConfigSource::DefaultPath;
         while let Some(arg) = parser.next()? {
             match arg {
+                Arg::Short('h') | Arg::Long("help") => return Ok(Command::Help),
                 Arg::Short('V') | Arg::Long("version") => return Ok(Command::Version),
                 Arg::Short('c') | Arg::Long("config") => {
                     cfg_src = ConfigSource::Path(parser.value()?.parse()?);
@@ -64,6 +66,44 @@ impl Command {
                         r
                     }
                 }
+            }
+            Command::Help => {
+                let mut stdout = io::stdout().lock();
+                writeln!(&mut stdout, "Usage: ratsnake [<options>]")?;
+                writeln!(&mut stdout)?;
+                writeln!(&mut stdout, "Snake game in Rust+Ratatui")?;
+                writeln!(&mut stdout)?;
+                writeln!(
+                    &mut stdout,
+                    "Visit <https://github.com/jwodder/ratsnake> for more information."
+                )?;
+                writeln!(&mut stdout)?;
+                writeln!(&mut stdout, "Options:")?;
+                writeln!(&mut stdout, "  -c <file>, --config <file>")?;
+                writeln!(
+                    &mut stdout,
+                    "                    Read configuration settings from <file>."
+                )?;
+                writeln!(&mut stdout)?;
+                if let Ok(p) = Config::default_path() {
+                    writeln!(
+                        &mut stdout,
+                        "                    [Default configuration file: {}]",
+                        p.display()
+                    )?;
+                } else {
+                    writeln!(&mut stdout, "                    [Warning: could not determine default configuration file]")?;
+                }
+                writeln!(&mut stdout)?;
+                writeln!(
+                    &mut stdout,
+                    "  -h, --help        Display this help message and exit"
+                )?;
+                writeln!(
+                    &mut stdout,
+                    "  -V, --version     Show the program version and exit"
+                )?;
+                Ok(())
             }
             Command::Version => {
                 writeln!(
