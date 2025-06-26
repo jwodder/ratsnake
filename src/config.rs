@@ -66,11 +66,13 @@ impl Config {
         let r = match self.options_file() {
             Ok(Some(p)) => Options::load(&p),
             Ok(None) => Ok(None),
+            Err(_) if self.files.ignore_errors => Ok(None),
             Err(_) => Err(LoadError::no_path("options")),
         };
         match r {
             Ok(Some(opts)) => Ok(opts),
             Ok(None) => Ok(self.options),
+            Err(_) if self.files.ignore_errors => Ok(self.options),
             Err(e) => Err(e),
         }
     }
@@ -78,8 +80,16 @@ impl Config {
     /// Save the given gameplay options to a file, if enabled.
     pub(crate) fn save_options(&self, options: Options) -> Result<(), SaveError> {
         match self.options_file() {
-            Ok(Some(p)) => options.save(&p),
+            Ok(Some(p)) => {
+                let r = options.save(&p);
+                if r.is_err() && self.files.ignore_errors {
+                    Ok(())
+                } else {
+                    r
+                }
+            }
             Ok(None) => Ok(()),
+            Err(_) if self.files.ignore_errors => Ok(()),
             Err(_) => Err(SaveError::no_path("options")),
         }
     }
@@ -98,7 +108,15 @@ impl Config {
     /// `HighScores` value is returned.
     pub(crate) fn load_high_scores(&self) -> Result<HighScores, LoadError> {
         match self.high_scores_file() {
-            Ok(p) => HighScores::load(&p),
+            Ok(p) => {
+                let r = HighScores::load(&p);
+                if r.is_err() && self.files.ignore_errors {
+                    Ok(HighScores::default())
+                } else {
+                    r
+                }
+            }
+            Err(_) if self.files.ignore_errors => Ok(HighScores::default()),
             Err(_) => Err(LoadError::no_path("high scores")),
         }
     }
@@ -106,7 +124,15 @@ impl Config {
     /// Save the given high scores to a file
     pub(crate) fn save_high_scores(&self, scores: &HighScores) -> Result<(), SaveError> {
         match self.high_scores_file() {
-            Ok(p) => scores.save(&p),
+            Ok(p) => {
+                let r = scores.save(&p);
+                if r.is_err() && self.files.ignore_errors {
+                    Ok(())
+                } else {
+                    r
+                }
+            }
+            Err(_) if self.files.ignore_errors => Ok(()),
             Err(_) => Err(SaveError::no_path("high scores")),
         }
     }
@@ -122,6 +148,10 @@ pub(crate) struct FileConfig {
     // This is a directory path in anticipation of eventually also storing
     // level high scores here.
     high_scores_dir: Option<PathBuf>,
+
+    /// Whether to ignore errors that occur while saving & loading options &
+    /// high-score files.
+    ignore_errors: bool,
 }
 
 #[derive(Clone, Deserialize, Debug, Default, Eq, PartialEq)]
@@ -129,6 +159,7 @@ pub(crate) struct FileConfig {
 struct RawFileConfig {
     options_file: OptionsFile<String>,
     high_scores_dir: Option<String>,
+    ignore_errors: bool,
 }
 
 impl TryFrom<RawFileConfig> for FileConfig {
@@ -142,6 +173,7 @@ impl TryFrom<RawFileConfig> for FileConfig {
                 .as_deref()
                 .map(expanduser)
                 .transpose()?,
+            ignore_errors: value.ignore_errors,
         })
     }
 }
