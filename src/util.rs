@@ -10,6 +10,9 @@ use thiserror::Error;
 /// next screen when transitioning.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) struct Globals {
+    /// Program configuration
+    pub(crate) config: crate::config::Config,
+
     /// Gameplay options
     pub(crate) options: crate::options::Options,
 

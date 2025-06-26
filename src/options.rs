@@ -14,15 +14,19 @@ use std::fmt;
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub(crate) struct Options {
     /// Should levels wrap around at the borders?
+    #[serde(default)]
     pub(crate) wraparound: bool,
 
     /// Should randomly-generated obstacles be placed in levels?
+    #[serde(default)]
     pub(crate) obstacles: bool,
 
     /// Number of fruits present in a level at one time
+    #[serde(default)]
     pub(crate) fruits: FruitQty,
 
     /// Size of levels
+    #[serde(default)]
     pub(crate) level_size: LevelSize,
 }
 

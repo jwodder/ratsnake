@@ -1,5 +1,6 @@
 mod app;
 mod command;
+mod config;
 mod consts;
 mod game;
 mod highscores;
@@ -8,41 +9,48 @@ mod options;
 mod util;
 mod warning;
 use crate::app::App;
+use crate::config::Config;
 use crate::util::Globals;
 use anyhow::Context;
 use crossterm::{
     event::{DisableFocusChange, EnableFocusChange},
     execute,
 };
-use lexopt::{Arg, Parser};
+use lexopt::{Arg, Parser, ValueExt};
 use std::io::{self, ErrorKind, Write};
+use std::path::PathBuf;
 use std::process::ExitCode;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum Command {
-    Run,
+    Run(ConfigSource),
     Version,
 }
 
 impl Command {
     fn from_parser(mut parser: Parser) -> Result<Command, lexopt::Error> {
-        #[expect(clippy::never_loop)]
+        let mut cfg_src = ConfigSource::DefaultPath;
         while let Some(arg) = parser.next()? {
             match arg {
                 Arg::Short('V') | Arg::Long("version") => return Ok(Command::Version),
+                Arg::Short('c') | Arg::Long("config") => {
+                    cfg_src = ConfigSource::Path(parser.value()?.parse()?);
+                }
                 _ => return Err(arg.unexpected()),
             }
         }
-        Ok(Command::Run)
+        Ok(Command::Run(cfg_src))
     }
 
     fn run(self) -> anyhow::Result<()> {
         match self {
-            Command::Run => {
+            Command::Run(cfg_src) => {
+                let config = cfg_src.load()?;
                 let options = options::Options::load()?;
                 let high_scores = highscores::HighScores::load()?;
                 let terminal = init_terminal()?;
                 let r = App::new(Globals {
+                    config,
                     options,
                     high_scores,
                 })
@@ -66,6 +74,25 @@ impl Command {
                 )?;
                 Ok(())
             }
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum ConfigSource {
+    DefaultPath,
+    Path(PathBuf),
+}
+
+impl ConfigSource {
+    fn load(&self) -> anyhow::Result<Config> {
+        match self {
+            ConfigSource::DefaultPath => match Config::load(&Config::default_path()?) {
+                Ok(config) => Ok(config),
+                Err(e) if e.is_not_found() => Ok(Config::default()),
+                Err(e) => Err(e.into()),
+            },
+            ConfigSource::Path(p) => Config::load(p).map_err(Into::into),
         }
     }
 }
