@@ -296,13 +296,6 @@ pub(crate) fn data_dir() -> Option<PathBuf> {
     dirs::data_local_dir().map(|p| p.join("ratsnake"))
 }
 
-/// Return the path to the file in which high scores should be stored
-pub(crate) fn high_scores_file_path() -> Option<PathBuf> {
-    // Use a directory within `data_dir()` in anticipation of eventually having
-    // to store level high scores next to the "main" high scores
-    data_dir().map(|p| p.join("highscores").join("arcade.json"))
-}
-
 /// If `path` starts with a leading tilde component, replace it with the user's
 /// home directory.
 pub(crate) fn expanduser(path: &str) -> Result<PathBuf, NoHomeError> {

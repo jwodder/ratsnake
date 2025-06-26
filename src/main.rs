@@ -49,7 +49,7 @@ impl Command {
             Command::Run(cfg_src) => {
                 let config = cfg_src.load()?;
                 let options = config.load_options()?;
-                let high_scores = highscores::HighScores::load()?;
+                let high_scores = config.load_high_scores()?;
                 let terminal = init_terminal()?;
                 let r = App::new(Globals {
                     config,

@@ -233,7 +233,12 @@ impl<R> Game<R> {
     fn finalize_score(&mut self) -> PostMortem {
         if let Some(score) = self.new_high_score() {
             self.globals.high_scores.set(self.globals.options, score);
-            let warning = self.globals.high_scores.save().err().map(Warning::from);
+            let warning = self
+                .globals
+                .config
+                .save_high_scores(&self.globals.high_scores)
+                .err()
+                .map(Warning::from);
             PostMortem {
                 new_high_score: true,
                 warning,

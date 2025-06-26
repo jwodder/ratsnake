@@ -1,3 +1,4 @@
+use crate::highscores::HighScores;
 use crate::options::Options;
 use crate::util::{expanduser, LoadError, NoHomeError, SaveError};
 use serde::{de::Deserializer, Deserialize};
@@ -82,6 +83,33 @@ impl Config {
             Err(_) => Err(SaveError::no_path("options")),
         }
     }
+
+    /// Return the filepath at which high scores should be stored: a file
+    /// inside the directory file given in the configuration or, if that is not
+    /// set, the default high scores file path.
+    fn high_scores_file(&self) -> Result<PathBuf, NoHomeError> {
+        match self.files.high_scores_dir {
+            Some(ref path) => Ok(path.join(HighScores::ARCADE_FILE_NAME)),
+            None => HighScores::default_path().ok_or(NoHomeError),
+        }
+    }
+
+    /// Load high scores from a file.  If the file does not exist, an empty
+    /// `HighScores` value is returned.
+    pub(crate) fn load_high_scores(&self) -> Result<HighScores, LoadError> {
+        match self.high_scores_file() {
+            Ok(p) => HighScores::load(&p),
+            Err(_) => Err(LoadError::no_path("high scores")),
+        }
+    }
+
+    /// Save the given high scores to a file
+    pub(crate) fn save_high_scores(&self, scores: &HighScores) -> Result<(), SaveError> {
+        match self.high_scores_file() {
+            Ok(p) => scores.save(&p),
+            Err(_) => Err(SaveError::no_path("high scores")),
+        }
+    }
 }
 
 #[derive(Clone, Deserialize, Debug, Default, Eq, PartialEq)]
@@ -89,12 +117,18 @@ impl Config {
 pub(crate) struct FileConfig {
     /// Path at which gameplay options should be stored
     options_file: OptionsFile<PathBuf>,
+
+    /// Path to the directory in which high scores should be saved
+    // This is a directory path in anticipation of eventually also storing
+    // level high scores here.
+    high_scores_dir: Option<PathBuf>,
 }
 
 #[derive(Clone, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(default, rename_all = "kebab-case")]
 struct RawFileConfig {
     options_file: OptionsFile<String>,
+    high_scores_dir: Option<String>,
 }
 
 impl TryFrom<RawFileConfig> for FileConfig {
@@ -103,6 +137,11 @@ impl TryFrom<RawFileConfig> for FileConfig {
     fn try_from(value: RawFileConfig) -> Result<FileConfig, NoHomeError> {
         Ok(FileConfig {
             options_file: value.options_file.expanduser()?,
+            high_scores_dir: value
+                .high_scores_dir
+                .as_deref()
+                .map(expanduser)
+                .transpose()?,
         })
     }
 }
@@ -206,6 +245,7 @@ mod tests {
                     options_file: OptionsFile::Path(PathBuf::from(
                         "/home/luser/stuff/ratsnake/options.json"
                     )),
+                    ..FileConfig::default()
                 },
                 ..Config::default()
             }
@@ -228,6 +268,7 @@ mod tests {
             Config {
                 files: FileConfig {
                     options_file: OptionsFile::Default,
+                    ..FileConfig::default()
                 },
                 ..Config::default()
             }
@@ -245,6 +286,7 @@ mod tests {
             Config {
                 files: FileConfig {
                     options_file: OptionsFile::Default,
+                    ..FileConfig::default()
                 },
                 ..Config::default()
             }
@@ -262,6 +304,7 @@ mod tests {
             Config {
                 files: FileConfig {
                     options_file: OptionsFile::Off,
+                    ..FileConfig::default()
                 },
                 ..Config::default()
             }
