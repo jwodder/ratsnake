@@ -101,10 +101,9 @@ impl<R: Rng> Game<R> {
     /// screen or quit.
     pub(crate) fn process_input(&mut self) -> std::io::Result<Option<Screen>> {
         if self.running() {
-            if self.next_tick.is_none() {
-                self.next_tick = Some(Instant::now() + consts::TICK_PERIOD);
-            }
-            let when = self.next_tick.expect("next_tick should be Some");
+            let when = *self
+                .next_tick
+                .get_or_insert_with(|| Instant::now() + consts::TICK_PERIOD);
             let wait = when.saturating_duration_since(Instant::now());
             if wait.is_zero() || !poll(wait)? {
                 self.advance();
