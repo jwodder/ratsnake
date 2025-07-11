@@ -1,5 +1,5 @@
-v0.2.1 (in development)
------------------------
+v0.2.1 (2025-07-11)
+-------------------
 - Allow private use codepoints to be specified as game symbols in the
   configuration file
 
