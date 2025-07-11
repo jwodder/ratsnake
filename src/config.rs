@@ -12,7 +12,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
-use unicode_properties::{GeneralCategoryGroup, UnicodeGeneralCategory};
+use unicode_properties::{GeneralCategory, GeneralCategoryGroup, UnicodeGeneralCategory};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
@@ -321,7 +321,9 @@ impl TryFrom<char> for Symbol {
         if ch.width() != Some(1) {
             return Err(ParseSymbolError::Wide);
         }
-        if ch.general_category_group() == GeneralCategoryGroup::Other {
+        if ch.general_category_group() == GeneralCategoryGroup::Other
+            && ch.general_category() != GeneralCategory::PrivateUse
+        {
             return Err(ParseSymbolError::Control);
         }
         Ok(Symbol(String::from(ch)))
@@ -338,9 +340,10 @@ impl std::str::FromStr for Symbol {
         if s.width() != 1 {
             return Err(ParseSymbolError::Wide);
         }
-        if s.chars()
-            .any(|c| c.general_category_group() == GeneralCategoryGroup::Other)
-        {
+        if s.chars().any(|c| {
+            c.general_category_group() == GeneralCategoryGroup::Other
+                && c.general_category() != GeneralCategory::PrivateUse
+        }) {
             return Err(ParseSymbolError::Control);
         }
         Ok(Symbol(s.to_owned()))
@@ -717,7 +720,7 @@ mod tests {
     #[case("\u{FF10}", false)] // wide
     #[case("\u{1F601}", false)] // wide
     #[case("\u{200D}", false)] // zero-width
-    #[case("\u{F8FF}", false)] // private use
+    #[case("\u{F8FF}", true)] // private use
     #[case("\u{FFFF}", false)] // unassigned
     #[case("\u{AD}", false)] // soft hyphen (formatting character)
     #[case("\u{200E}", false)] // left-to-right mark (formatting character)
@@ -744,7 +747,7 @@ mod tests {
     #[case('\u{FF10}', false)] // wide
     #[case('\u{1F601}', false)] // wide
     #[case('\u{200D}', false)] // zero-width
-    #[case('\u{F8FF}', false)] // private use
+    #[case('\u{F8FF}', true)] // private use
     #[case('\u{FFFF}', false)] // unassigned
     #[case('\u{AD}', false)] // soft hyphen (formatting character)
     #[case('\u{200E}', false)] // left-to-right mark (formatting character)
