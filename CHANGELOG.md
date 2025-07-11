@@ -1,3 +1,8 @@
+v0.2.1 (in development)
+-----------------------
+- Allow private use codepoints to be specified as game symbols in the
+  configuration file
+
 v0.2.0 (2025-06-26)
 -------------------
 - Added support for configuring file paths, options, and certain glyphs via a
