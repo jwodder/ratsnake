@@ -60,10 +60,13 @@ impl Widget for Logo {
         let [area] = Layout::horizontal([Self::WIDTH])
             .flex(Flex::Start)
             .areas(area);
-        let [words_area, diagram_area] = Layout::vertical([Self::TEXT_HEIGHT, 1])
-            .flex(Flex::Start)
-            .spacing(1)
-            .areas(area);
+        let [words_area, _, diagram_area] = Layout::vertical([
+            Constraint::Length(Self::TEXT_HEIGHT),
+            Constraint::Max(1),
+            Constraint::Max(1),
+        ])
+        .flex(Flex::Start)
+        .areas(area);
         let [rat_area, snake_area] = Layout::horizontal([Self::RAT_WIDTH, Self::SNAKE_WIDTH])
             .flex(Flex::Start)
             .areas(words_area);
@@ -229,6 +232,28 @@ mod tests {
             expected.set_style(Rect::new(18, 1, 28, 5), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(17, 7, 13, 1), consts::SNAKE_STYLE);
             expected.set_style(Rect::new(32, 7, 1, 1), consts::FRUIT_STYLE);
+            pretty_assertions::assert_eq!(buffer, expected);
+        }
+
+        #[test]
+        fn test_render_too_small() {
+            let mut buffer = Buffer::empty(Rect::new(0, 0, 50, 10));
+            Logo.render(Rect::new(3, 2, 40, 3), &mut buffer);
+            #[rustfmt::skip]
+            let mut expected = Buffer::with_lines([
+                 "",
+                 "",
+                 "    ____       _   ____              _            ",
+                r"   |  _ \ __ _| |_/ ___| _ __   __ _| | ___       ",
+                r"   | |_) / _` | __\___ \| '_ \ / _` | |/ /        ",
+                 "",
+                 "",
+                 "",
+                 "",
+                 "",
+            ]);
+            expected.set_style(Rect::new(3, 2, 15, 3), consts::FRUIT_STYLE);
+            expected.set_style(Rect::new(18, 2, 25, 3), consts::SNAKE_STYLE);
             pretty_assertions::assert_eq!(buffer, expected);
         }
 
