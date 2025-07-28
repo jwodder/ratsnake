@@ -1,3 +1,4 @@
+use crate::hstable::HSEntry;
 use crate::options::Options;
 use crate::util::{data_dir, LoadError, SaveError};
 use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
@@ -65,6 +66,16 @@ impl HighScores {
     /// that `score` is higher than the current high score.
     pub(crate) fn set(&mut self, opts: Options, score: NonZeroU32) {
         self.0.insert(opts, score);
+    }
+
+    pub(crate) fn to_hsentries(&self) -> Vec<HSEntry> {
+        let mut entries = self
+            .0
+            .iter()
+            .map(|(&options, &score)| HSEntry { score, options })
+            .collect::<Vec<_>>();
+        entries.sort_unstable_by_key(|&entry| std::cmp::Reverse(entry));
+        entries
     }
 
     /// Convert the high scores to a list of `{"options": ..., "score": ...}`

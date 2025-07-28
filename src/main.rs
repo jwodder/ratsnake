@@ -5,6 +5,7 @@ mod consts;
 mod direction;
 mod game;
 mod highscores;
+mod hstable;
 mod menu;
 mod options;
 mod util;

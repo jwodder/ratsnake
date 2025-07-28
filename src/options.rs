@@ -12,7 +12,9 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 /// Gameplay options
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub(crate) struct Options {
     /// Should levels wrap around at the borders?
     #[serde(default)]
@@ -239,7 +241,9 @@ impl Adjustable for bool {
 }
 
 /// Possible level sizes that the user can choose from
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum LevelSize {
     /// A 38×8 level
@@ -317,7 +321,7 @@ impl Adjustable for LevelSize {
 
 /// The number of fruits present in a level at one time.  The value is
 /// restricted to between 1 and [`crate::consts::MAX_FRUITS`], inclusive.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(crate) struct FruitQty(usize);
 
 impl FruitQty {

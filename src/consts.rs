@@ -67,11 +67,15 @@ pub(crate) const COLLISION_STYLE: Style = Style::new()
 /// Style for key codes shown in the interface
 pub(crate) const KEY_STYLE: Style = Style::new().fg(Color::Yellow);
 
-/// Style for the score bar at the top of the game screen
+/// Style for the score bar at the top of the game screen and the "High Scores"
+/// title at the top of the high scores table screen
 pub(crate) const SCORE_BAR_STYLE: Style = Style::new().add_modifier(Modifier::REVERSED);
 
 /// Style for the currently-selected menu item
 pub(crate) const MENU_SELECTION_STYLE: Style = Style::new().add_modifier(Modifier::UNDERLINED);
+
+/// Style for the cells of the header row of the high scores table
+pub(crate) const HSTABLE_HEADER_STYLE: Style = Style::new();
 
 /// Probability of placing an obstacle in a given cell
 pub(crate) const OBSTACLE_PROBABILITY: f64 = 0.03;

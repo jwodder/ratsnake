@@ -4,6 +4,7 @@ use crate::app::Screen;
 use crate::command::Command;
 use crate::consts;
 use crate::game::Game;
+use crate::hstable::HSTable;
 use crate::options::{Adjustable, OptKey, OptValue, Options};
 use crate::util::{get_display_area, EnumExt, Globals};
 use crate::warning::{Warning, WarningOutcome};
@@ -99,12 +100,21 @@ impl MainMenu {
                 (Selection::Options, Command::Left) => self.opts_menu.move_left(),
                 (Selection::Options, Command::Right) => self.opts_menu.move_right(),
                 (Selection::Options, Command::Space | Command::Enter) => self.opts_menu.toggle(),
+                (Selection::HighScores, Command::Enter) | (_, Command::HighScores) => {
+                    return Some(Screen::HSTable(HSTable::new(self.globals.clone())));
+                }
+                (Selection::HighScores, Command::Down | Command::Next) => {
+                    self.select(Selection::QuitButton, None);
+                }
+                (Selection::HighScores, Command::Up | Command::Prev) => {
+                    self.select(Selection::Options, Some(false));
+                }
                 (Selection::QuitButton, Command::Enter) | (_, Command::Q) => {
                     return Some(Screen::Quit);
                 }
                 (Selection::QuitButton, Command::Next) => self.select(Selection::PlayButton, None),
                 (Selection::QuitButton, Command::Up | Command::Prev) => {
-                    self.select(Selection::Options, Some(false));
+                    self.select(Selection::HighScores, None);
                 }
                 _ => (),
             },
@@ -156,7 +166,7 @@ impl Widget for &MainMenu {
 
         let [_, main_area, _] = Layout::vertical([
             Constraint::Fill(1),
-            Constraint::Length(OptionsMenu::HEIGHT + 4),
+            Constraint::Length(OptionsMenu::HEIGHT + 6),
             Constraint::Fill(2),
         ])
         .areas(main_area);
@@ -165,10 +175,11 @@ impl Widget for &MainMenu {
                 .flex(Flex::SpaceAround)
                 .areas(main_area);
 
-        let [play_area, options_area, quit_area] = Layout::vertical([1, OptionsMenu::HEIGHT, 1])
-            .flex(Flex::Start)
-            .spacing(1)
-            .areas(form_area);
+        let [play_area, options_area, hs_area, quit_area] =
+            Layout::vertical([1, OptionsMenu::HEIGHT, 1, 1])
+                .flex(Flex::Start)
+                .spacing(1)
+                .areas(form_area);
 
         let play_style = if self.selection == Selection::PlayButton {
             consts::MENU_SELECTION_STYLE
@@ -187,6 +198,19 @@ impl Widget for &MainMenu {
             .flex(Flex::Center)
             .areas(options_area);
         (&self.opts_menu).render(options_area, buf);
+
+        let hsstyle = if self.selection == Selection::HighScores {
+            consts::MENU_SELECTION_STYLE
+        } else {
+            Style::new()
+        };
+        Line::from_iter([
+            Span::styled("[High Scores (", hsstyle),
+            Span::styled("H", consts::KEY_STYLE.patch(hsstyle)),
+            Span::styled(")]", hsstyle),
+        ])
+        .centered()
+        .render(hs_area, buf);
 
         let qstyle = if self.selection == Selection::QuitButton {
             consts::MENU_SELECTION_STYLE
@@ -236,6 +260,9 @@ enum Selection {
 
     /// The options sub-menu
     Options,
+
+    /// The "[High Scores (H)]" button
+    HighScores,
 
     /// The "[Quit (q)]" button
     QuitButton,
@@ -303,7 +330,7 @@ impl OptionsMenu {
     /// return the form item to move the selection to instead.
     fn move_down(&mut self) -> Option<Selection> {
         self.selection = self.selection?.next();
-        self.selection.is_none().then_some(Selection::QuitButton)
+        self.selection.is_none().then_some(Selection::HighScores)
     }
 
     /// Respond to a "Left" input by decreasing or unsetting the current
@@ -386,18 +413,18 @@ mod tests {
                  "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
                  "                                                                                ",
                  "                                                                                ",
-                 "                                                                                ",
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
-                 "           ┌ Options: ────────────────┐          Move the snake with:           ",
-                 "           │   Wraparound     [ ]     │                 ← ↓ ↑ →                 ",
-                 "           │   Obstacles      [ ]     │             or: h j k l                 ",
-                 "           │   Fruits      ◁   1    ▶ │             or: a s w d                 ",
-                 "           │   Level Size  ◀ Large  ▷ │             or: 4 2 8 6                 ",
-                 "           └──────────────────────────┘          Eat the fruit, but             ",
-                 "                                                 don't hit yourself!            ",
-                 "                    [Quit (q)]                                                  ",
+                 "           ┌ Options: ────────────────┐                                         ",
+                 "           │   Wraparound     [ ]     │          Move the snake with:           ",
+                 "           │   Obstacles      [ ]     │                 ← ↓ ↑ →                 ",
+                 "           │   Fruits      ◁   1    ▶ │             or: h j k l                 ",
+                 "           │   Level Size  ◀ Large  ▷ │             or: a s w d                 ",
+                 "           └──────────────────────────┘             or: 4 2 8 6                 ",
+                 "                                                 Eat the fruit, but             ",
+                 "                [High Scores (H)]                don't hit yourself!            ",
                  "                                                                                ",
+                 "                    [Quit (q)]                                                  ",
                  "                                                                                ",
                  "                                                                                ",
                  "                                                                                ",
@@ -406,9 +433,10 @@ mod tests {
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
             expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
-            expected.set_style(Rect::new(27, 10, 1, 1), consts::KEY_STYLE); // `p`
-            expected.set_style(Rect::new(20, 10, 10, 1), consts::MENU_SELECTION_STYLE); // Play button
-            expected.set_style(Rect::new(27, 19, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(27, 9, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(20, 9, 10, 1), consts::MENU_SELECTION_STYLE); // Play button
+            expected.set_style(Rect::new(30, 18, 1, 1), consts::KEY_STYLE); // `H`
+            expected.set_style(Rect::new(27, 20, 1, 1), consts::KEY_STYLE); // `q`
             expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
             expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
             expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
@@ -448,18 +476,18 @@ mod tests {
                  "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
                  "                                                                                ",
                  "                                                                                ",
-                 "                                                                                ",
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
-                 "           ┌ Options: ────────────────┐          Move the snake with:           ",
-                 "           │ » Wraparound     [ ]     │                 ← ↓ ↑ →                 ",
-                 "           │   Obstacles      [ ]     │             or: h j k l                 ",
-                 "           │   Fruits      ◁   1    ▶ │             or: a s w d                 ",
-                 "           │   Level Size  ◀ Large  ▷ │             or: 4 2 8 6                 ",
-                 "           └──────────────────────────┘          Eat the fruit, but             ",
-                 "                                                 don't hit yourself!            ",
-                 "                    [Quit (q)]                                                  ",
+                 "           ┌ Options: ────────────────┐                                         ",
+                 "           │ » Wraparound     [ ]     │          Move the snake with:           ",
+                 "           │   Obstacles      [ ]     │                 ← ↓ ↑ →                 ",
+                 "           │   Fruits      ◁   1    ▶ │             or: h j k l                 ",
+                 "           │   Level Size  ◀ Large  ▷ │             or: a s w d                 ",
+                 "           └──────────────────────────┘             or: 4 2 8 6                 ",
+                 "                                                 Eat the fruit, but             ",
+                 "                [High Scores (H)]                don't hit yourself!            ",
                  "                                                                                ",
+                 "                    [Quit (q)]                                                  ",
                  "                                                                                ",
                  "                                                                                ",
                  "                                                                                ",
@@ -468,9 +496,10 @@ mod tests {
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
             expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
-            expected.set_style(Rect::new(27, 10, 1, 1), consts::KEY_STYLE); // `p`
-            expected.set_style(Rect::new(13, 13, 24, 1), consts::MENU_SELECTION_STYLE); // "Wraparound" option
-            expected.set_style(Rect::new(27, 19, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(27, 9, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(13, 12, 24, 1), consts::MENU_SELECTION_STYLE); // "Wraparound" option
+            expected.set_style(Rect::new(30, 18, 1, 1), consts::KEY_STYLE); // `H`
+            expected.set_style(Rect::new(27, 20, 1, 1), consts::KEY_STYLE); // `q`
             expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
             expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
             expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
@@ -505,18 +534,18 @@ mod tests {
                  "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
                  "                                                                                ",
                  "                                                                                ",
-                 "                                                                                ",
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
-                 "           ┌ Options: ────────────────┐          Move the snake with:           ",
-                 "           │ » Wraparound     [✓]     │                 ← ↓ ↑ →                 ",
-                 "           │   Obstacles      [ ]     │             or: h j k l                 ",
-                 "           │   Fruits      ◁   1    ▶ │             or: a s w d                 ",
-                 "           │   Level Size  ◀ Large  ▷ │             or: 4 2 8 6                 ",
-                 "           └──────────────────────────┘          Eat the fruit, but             ",
-                 "                                                 don't hit yourself!            ",
-                 "                    [Quit (q)]                                                  ",
+                 "           ┌ Options: ────────────────┐                                         ",
+                 "           │ » Wraparound     [✓]     │          Move the snake with:           ",
+                 "           │   Obstacles      [ ]     │                 ← ↓ ↑ →                 ",
+                 "           │   Fruits      ◁   1    ▶ │             or: h j k l                 ",
+                 "           │   Level Size  ◀ Large  ▷ │             or: a s w d                 ",
+                 "           └──────────────────────────┘             or: 4 2 8 6                 ",
+                 "                                                 Eat the fruit, but             ",
+                 "                [High Scores (H)]                don't hit yourself!            ",
                  "                                                                                ",
+                 "                    [Quit (q)]                                                  ",
                  "                                                                                ",
                  "                                                                                ",
                  "                                                                                ",
@@ -525,9 +554,10 @@ mod tests {
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
             expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
-            expected.set_style(Rect::new(27, 10, 1, 1), consts::KEY_STYLE); // `p`
-            expected.set_style(Rect::new(13, 13, 24, 1), consts::MENU_SELECTION_STYLE); // "Wraparound" option
-            expected.set_style(Rect::new(27, 19, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(27, 9, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(13, 12, 24, 1), consts::MENU_SELECTION_STYLE); // "Wraparound" option
+            expected.set_style(Rect::new(30, 18, 1, 1), consts::KEY_STYLE); // `H`
+            expected.set_style(Rect::new(27, 20, 1, 1), consts::KEY_STYLE); // `q`
             expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
             expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
             expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
@@ -571,18 +601,18 @@ mod tests {
                  "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
                  "                                                                                ",
                  "                                                                                ",
-                 "                                                                                ",
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
-                 "           ┌ Options: ────────────────┐          Move the snake with:           ",
-                 "           │   Wraparound     [✓]     │                 ← ↓ ↑ →                 ",
-                 "           │   Obstacles      [ ]     │             or: h j k l                 ",
-                 "           │   Fruits      ◁   1    ▶ │             or: a s w d                 ",
-                 "           │ » Level Size  ◀ Large  ▷ │             or: 4 2 8 6                 ",
-                 "           └──────────────────────────┘          Eat the fruit, but             ",
-                 "                                                 don't hit yourself!            ",
-                 "                    [Quit (q)]                                                  ",
+                 "           ┌ Options: ────────────────┐                                         ",
+                 "           │   Wraparound     [✓]     │          Move the snake with:           ",
+                 "           │   Obstacles      [ ]     │                 ← ↓ ↑ →                 ",
+                 "           │   Fruits      ◁   1    ▶ │             or: h j k l                 ",
+                 "           │ » Level Size  ◀ Large  ▷ │             or: a s w d                 ",
+                 "           └──────────────────────────┘             or: 4 2 8 6                 ",
+                 "                                                 Eat the fruit, but             ",
+                 "                [High Scores (H)]                don't hit yourself!            ",
                  "                                                                                ",
+                 "                    [Quit (q)]                                                  ",
                  "                                                                                ",
                  "                                                                                ",
                  "                                                                                ",
@@ -591,9 +621,10 @@ mod tests {
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
             expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
-            expected.set_style(Rect::new(27, 10, 1, 1), consts::KEY_STYLE); // `p`
-            expected.set_style(Rect::new(13, 16, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
-            expected.set_style(Rect::new(27, 19, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(27, 9, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(13, 15, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
+            expected.set_style(Rect::new(30, 18, 1, 1), consts::KEY_STYLE); // `H`
+            expected.set_style(Rect::new(27, 20, 1, 1), consts::KEY_STYLE); // `q`
             expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
             expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
             expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
@@ -628,18 +659,18 @@ mod tests {
                  "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
                  "                                                                                ",
                  "                                                                                ",
-                 "                                                                                ",
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
-                 "           ┌ Options: ────────────────┐          Move the snake with:           ",
-                 "           │   Wraparound     [✓]     │                 ← ↓ ↑ →                 ",
-                 "           │   Obstacles      [ ]     │             or: h j k l                 ",
-                 "           │   Fruits      ◁   1    ▶ │             or: a s w d                 ",
-                 "           │ » Level Size  ◀ Medium ▶ │             or: 4 2 8 6                 ",
-                 "           └──────────────────────────┘          Eat the fruit, but             ",
-                 "                                                 don't hit yourself!            ",
-                 "                    [Quit (q)]                                                  ",
+                 "           ┌ Options: ────────────────┐                                         ",
+                 "           │   Wraparound     [✓]     │          Move the snake with:           ",
+                 "           │   Obstacles      [ ]     │                 ← ↓ ↑ →                 ",
+                 "           │   Fruits      ◁   1    ▶ │             or: h j k l                 ",
+                 "           │ » Level Size  ◀ Medium ▶ │             or: a s w d                 ",
+                 "           └──────────────────────────┘             or: 4 2 8 6                 ",
+                 "                                                 Eat the fruit, but             ",
+                 "                [High Scores (H)]                don't hit yourself!            ",
                  "                                                                                ",
+                 "                    [Quit (q)]                                                  ",
                  "                                                                                ",
                  "                                                                                ",
                  "                                                                                ",
@@ -648,9 +679,10 @@ mod tests {
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
             expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
-            expected.set_style(Rect::new(27, 10, 1, 1), consts::KEY_STYLE); // `p`
-            expected.set_style(Rect::new(13, 16, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
-            expected.set_style(Rect::new(27, 19, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(27, 9, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(13, 15, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
+            expected.set_style(Rect::new(30, 18, 1, 1), consts::KEY_STYLE); // `H`
+            expected.set_style(Rect::new(27, 20, 1, 1), consts::KEY_STYLE); // `q`
             expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
             expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
             expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
@@ -685,18 +717,18 @@ mod tests {
                  "                                 ⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬⚬<  ●                               ",
                  "                                                                                ",
                  "                                                                                ",
-                 "                                                                                ",
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
-                 "           ┌ Options: ────────────────┐          Move the snake with:           ",
-                 "           │   Wraparound     [✓]     │                 ← ↓ ↑ →                 ",
-                 "           │   Obstacles      [ ]     │             or: h j k l                 ",
-                 "           │   Fruits      ◁   1    ▶ │             or: a s w d                 ",
-                 "           │ » Level Size  ◁ Small  ▶ │             or: 4 2 8 6                 ",
-                 "           └──────────────────────────┘          Eat the fruit, but             ",
-                 "                                                 don't hit yourself!            ",
-                 "                    [Quit (q)]                                                  ",
+                 "           ┌ Options: ────────────────┐                                         ",
+                 "           │   Wraparound     [✓]     │          Move the snake with:           ",
+                 "           │   Obstacles      [ ]     │                 ← ↓ ↑ →                 ",
+                 "           │   Fruits      ◁   1    ▶ │             or: h j k l                 ",
+                 "           │ » Level Size  ◁ Small  ▶ │             or: a s w d                 ",
+                 "           └──────────────────────────┘             or: 4 2 8 6                 ",
+                 "                                                 Eat the fruit, but             ",
+                 "                [High Scores (H)]                don't hit yourself!            ",
                  "                                                                                ",
+                 "                    [Quit (q)]                                                  ",
                  "                                                                                ",
                  "                                                                                ",
                  "                                                                                ",
@@ -705,9 +737,10 @@ mod tests {
             expected.set_style(Rect::new(34, 0, 28, 5), consts::SNAKE_STYLE); // "Snake"
             expected.set_style(Rect::new(33, 6, 13, 1), consts::SNAKE_STYLE); // ⚬⚬…⚬<
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
-            expected.set_style(Rect::new(27, 10, 1, 1), consts::KEY_STYLE); // `p`
-            expected.set_style(Rect::new(13, 16, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
-            expected.set_style(Rect::new(27, 19, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(27, 9, 1, 1), consts::KEY_STYLE); // `p`
+            expected.set_style(Rect::new(13, 15, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
+            expected.set_style(Rect::new(30, 18, 1, 1), consts::KEY_STYLE); // `H`
+            expected.set_style(Rect::new(27, 20, 1, 1), consts::KEY_STYLE); // `q`
             expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
             expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
             expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
@@ -740,6 +773,7 @@ mod tests {
             assert_eq!(menu.opts_menu.selection, Some(OptKey::max()));
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             assert_eq!(menu.opts_menu.selection, None);
+            assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             assert_eq!(menu.opts_menu.selection, Some(OptKey::min()));

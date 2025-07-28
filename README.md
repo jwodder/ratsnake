@@ -93,6 +93,7 @@ The following options can be set:
 | <kbd>Space</kbd>                                           | Toggle the current option                              |
 | <kbd>Enter</kbd>                                           | Toggle the current option or select the current button |
 | <kbd>p</kbd>                                               | Play a game of Snake                                   |
+| <kbd>H</kbd>                                               | View high scores                                       |
 | <kbd>q</kbd>                                               | Quit                                                   |
 
 Game

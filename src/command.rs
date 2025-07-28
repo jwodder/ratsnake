@@ -36,6 +36,8 @@ pub(crate) enum Command {
     Q,
     /// User pressed the `r` key
     R,
+    /// Go to high scores screen
+    HighScores,
 }
 
 impl Command {
@@ -64,6 +66,7 @@ impl Command {
             (KeyModifiers::NONE, KeyCode::Char('p')) => Some(Command::P),
             (KeyModifiers::NONE, KeyCode::Char('q')) => Some(Command::Q),
             (KeyModifiers::NONE, KeyCode::Char('r')) => Some(Command::R),
+            (KeyModifiers::SHIFT, KeyCode::Char('H')) => Some(Command::HighScores),
             _ => None,
         }
     }
