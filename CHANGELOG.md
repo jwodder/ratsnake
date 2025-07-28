@@ -1,5 +1,5 @@
-v0.3.0 (in development)
------------------------
+v0.3.0 (2025-07-27)
+-------------------
 - Added a high score table option to the main menu
 
 v0.2.1 (2025-07-11)
