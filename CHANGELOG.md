@@ -1,3 +1,7 @@
+v0.3.0 (in development)
+-----------------------
+- Added a high score table option to the main menu
+
 v0.2.1 (2025-07-11)
 -------------------
 - Allow private use codepoints to be specified as game symbols in the

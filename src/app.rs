@@ -1,4 +1,5 @@
 use crate::game::Game;
+use crate::hstable::HSTable;
 use crate::menu::MainMenu;
 use ratatui::{backend::Backend, Terminal};
 
@@ -35,6 +36,9 @@ impl App {
             Screen::Game(ref game) => {
                 terminal.draw(|frame| game.draw(frame))?;
             }
+            Screen::HSTable(ref tbl) => {
+                terminal.draw(|frame| tbl.draw(frame))?;
+            }
             Screen::Quit => (),
         }
         Ok(())
@@ -50,6 +54,11 @@ impl App {
             }
             Screen::Game(ref mut game) => {
                 if let Some(screen) = game.process_input()? {
+                    self.screen = screen;
+                }
+            }
+            Screen::HSTable(ref mut tbl) => {
+                if let Some(screen) = tbl.process_input()? {
                     self.screen = screen;
                 }
             }
@@ -85,6 +94,9 @@ pub(crate) enum Screen {
 
     /// The gameplay screen
     Game(Game),
+
+    /// The high score table
+    HSTable(HSTable),
 
     /// A pseudo-screen used to indicate that the application should terminate
     Quit,
