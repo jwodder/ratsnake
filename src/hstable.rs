@@ -188,14 +188,13 @@ impl Widget for &HSTable {
             }
             for (&entry, row_area) in std::iter::zip(&self.scores[self.scroll_offset..], rows) {
                 let mut s = String::new();
-                write!(
+                let _ = write!(
                     &mut s,
                     " {val:>width$}",
                     val = entry.score,
                     width = HSTable::SCORE_COLUMN_WIDTH as usize,
-                )
-                .unwrap();
-                write!(
+                );
+                let _ = write!(
                     &mut s,
                     " │ {val:^width$}",
                     val = if entry.options.wraparound {
@@ -204,9 +203,8 @@ impl Widget for &HSTable {
                         '✗'
                     },
                     width = HSTable::WRAPAROUND_COLUMN_WIDTH as usize,
-                )
-                .unwrap();
-                write!(
+                );
+                let _ = write!(
                     &mut s,
                     " │ {val:^width$}",
                     val = if entry.options.obstacles {
@@ -215,23 +213,20 @@ impl Widget for &HSTable {
                         '✗'
                     },
                     width = HSTable::OBSTACLES_COLUMN_WIDTH as usize,
-                )
-                .unwrap();
-                write!(
+                );
+                let _ = write!(
                     &mut s,
                     " │ {val:>width$}",
                     val = entry.options.fruits,
                     width = HSTable::FRUITS_COLUMN_WIDTH as usize,
-                )
-                .unwrap();
-                write!(
+                );
+                let _ = write!(
                     &mut s,
                     " │ {val:width$}",
                     val = entry.options.level_size,
                     width = HSTable::LEVEL_SIZE_COLUMN_WIDTH as usize,
-                )
-                .unwrap();
-                write!(&mut s, " ").unwrap();
+                );
+                let _ = write!(&mut s, " ");
                 buf.set_string(row_area.x, row_area.y, s, Style::new());
             }
             if let Some(scrollbar_area) = scrollbar_area {
