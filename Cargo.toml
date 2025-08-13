@@ -1,6 +1,6 @@
 [package]
 name = "ratsnake"
-version = "0.3.0"
+version = "0.4.0-dev"
 edition = "2021"
 rust-version = "1.82"
 description = "Snake game in Rust+Ratatui"
@@ -8,6 +8,8 @@ authors = ["John Thorvald Wodder II <ratsnake@varonathe.org>"]
 repository = "https://github.com/jwodder/ratsnake"
 documentation = "https://github.com/jwodder/ratsnake"
 license = "MIT"
+keywords = ["snake"]
+categories = ["games"]
 exclude = ["/.*"]
 
 [dependencies]
