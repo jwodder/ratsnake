@@ -169,6 +169,7 @@ fn init_terminal() -> anyhow::Result<ratatui::DefaultTerminal> {
 }
 
 /// Clean up the terminal, undoing the changes made by [`init_terminal()`]
+#[allow(clippy::or_fun_call)]
 fn restore_terminal() -> anyhow::Result<()> {
     execute!(io::stdout(), DisableFocusChange)
         .and(ratatui::try_restore())
