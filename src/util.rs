@@ -1,6 +1,6 @@
 use crate::consts;
 use enum_map::Enum;
-use ratatui::layout::{Flex, Layout, Position, Positions, Rect, Size};
+use ratatui::layout::{Constraint, Position, Positions, Rect, Size};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -271,13 +271,10 @@ enum LoadErrorSource {
 /// Produce a [`Rect`] of the given size that is centered both vertically &
 /// horizontally within `area`
 pub(crate) fn center_rect(area: Rect, size: Size) -> Rect {
-    let [inner] = Layout::horizontal([size.width])
-        .flex(Flex::Center)
-        .areas(area);
-    let [inner] = Layout::vertical([size.height])
-        .flex(Flex::Center)
-        .areas(inner);
-    inner
+    area.centered(
+        Constraint::Length(size.width),
+        Constraint::Length(size.height),
+    )
 }
 
 /// Calculate a [`Rect`] of size [`DISPLAY_SIZE`][consts::DISPLAY_SIZE]

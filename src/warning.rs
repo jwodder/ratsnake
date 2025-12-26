@@ -2,11 +2,11 @@ use crate::command::Command;
 use crate::util::center_rect;
 use ratatui::{
     buffer::Buffer,
-    layout::{Alignment, Constraint, Flex, Layout, Rect, Size},
+    layout::{Constraint, Flex, HorizontalAlignment, Layout, Rect, Size},
     text::{Line, Text},
     widgets::{
-        block::{Block, Padding},
-        Clear, Scrollbar, ScrollbarOrientation, ScrollbarState, StatefulWidget, Widget,
+        Block, Clear, Padding, Scrollbar, ScrollbarOrientation, ScrollbarState, StatefulWidget,
+        Widget,
     },
 };
 use std::borrow::Cow;
@@ -160,7 +160,7 @@ impl Widget for &Warning {
         );
         let block = Block::bordered()
             .title(" WARNING ")
-            .title_alignment(Alignment::Center)
+            .title_alignment(HorizontalAlignment::Center)
             .padding(Padding::horizontal(1));
         let [text_area, ok_area] = Layout::vertical([Constraint::Fill(1), Constraint::Length(1)])
             .flex(Flex::Start)

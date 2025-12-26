@@ -1,6 +1,8 @@
 v0.4.0 (in development)
 -----------------------
 - Add keywords & categories to package metadata
+- Update `ratatui` to v0.30.0
+- Increased MSRV to 1.86
 
 v0.3.0 (2025-07-27)
 -------------------

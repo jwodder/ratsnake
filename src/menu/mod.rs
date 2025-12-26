@@ -15,10 +15,7 @@ use ratatui::{
     layout::{Constraint, Flex, Layout, Rect},
     style::Style,
     text::{Line, Span},
-    widgets::{
-        block::{Block, Padding},
-        Widget,
-    },
+    widgets::{Block, Padding, Widget},
     Frame,
 };
 
@@ -172,7 +169,7 @@ impl Widget for &MainMenu {
         .areas(main_area);
         let [form_area, instructions_area] =
             Layout::horizontal([OptionsMenu::WIDTH, Instructions::WIDTH])
-                .flex(Flex::SpaceAround)
+                .flex(Flex::SpaceEvenly)
                 .areas(main_area);
 
         let [play_area, options_area, hs_area, quit_area] =

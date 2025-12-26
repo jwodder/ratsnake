@@ -5,13 +5,10 @@ use crossterm::event::Event;
 use enum_map::Enum;
 use ratatui::{
     buffer::Buffer,
-    layout::{Alignment, Rect},
+    layout::{HorizontalAlignment, Rect},
     style::Style,
     text::{Line, Span},
-    widgets::{
-        block::{Block, Padding},
-        Widget,
-    },
+    widgets::{Block, Padding, Widget},
 };
 
 /// A widget for displaying a pause menu pop-up
@@ -133,7 +130,7 @@ impl Widget for Paused {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let block = Block::bordered()
             .title(" PAUSED ")
-            .title_alignment(Alignment::Center)
+            .title_alignment(HorizontalAlignment::Center)
             .padding(Padding::horizontal(1))
             .style(Style::reset());
         let inner = block.inner(area);

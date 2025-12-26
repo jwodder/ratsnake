@@ -1,8 +1,5 @@
 //! Assorted constants & hard-coded configuration
-use ratatui::{
-    layout::Size,
-    style::{Color, Modifier, Style},
-};
+use ratatui::{layout::Size, style::Style};
 use std::time::Duration;
 
 /// Time between movements of the snake
@@ -51,28 +48,26 @@ pub(crate) const OBSTACLE_SYMBOL: char = '█';
 pub(crate) const COLLISION_SYMBOL: char = '×';
 
 /// Style for the snake's head and body
-pub(crate) const SNAKE_STYLE: Style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
+pub(crate) const SNAKE_STYLE: Style = Style::new().green().bold();
 
 /// Style for the fruit
-pub(crate) const FRUIT_STYLE: Style = Style::new().fg(Color::LightRed);
+pub(crate) const FRUIT_STYLE: Style = Style::new().light_red();
 
 /// Style for obstacles
-pub(crate) const OBSTACLE_STYLE: Style = Style::new().fg(Color::Gray);
+pub(crate) const OBSTACLE_STYLE: Style = Style::new().gray();
 
 /// Style for [`COLLISION_SYMBOL`]
-pub(crate) const COLLISION_STYLE: Style = Style::new()
-    .fg(Color::LightRed)
-    .add_modifier(Modifier::REVERSED);
+pub(crate) const COLLISION_STYLE: Style = Style::new().light_red().reversed();
 
 /// Style for key codes shown in the interface
-pub(crate) const KEY_STYLE: Style = Style::new().fg(Color::Yellow);
+pub(crate) const KEY_STYLE: Style = Style::new().yellow();
 
 /// Style for the score bar at the top of the game screen and the "High Scores"
 /// title at the top of the high scores table screen
-pub(crate) const SCORE_BAR_STYLE: Style = Style::new().add_modifier(Modifier::REVERSED);
+pub(crate) const SCORE_BAR_STYLE: Style = Style::new().reversed();
 
 /// Style for the currently-selected menu item
-pub(crate) const MENU_SELECTION_STYLE: Style = Style::new().add_modifier(Modifier::UNDERLINED);
+pub(crate) const MENU_SELECTION_STYLE: Style = Style::new().underlined();
 
 /// Style for the cells of the header row of the high scores table
 pub(crate) const HSTABLE_HEADER_STYLE: Style = Style::new();
