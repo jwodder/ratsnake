@@ -2,11 +2,11 @@ use crate::consts;
 use crate::direction::Direction;
 use crate::highscores::HighScores;
 use crate::options::Options;
-use crate::util::{expanduser, LoadError, NoHomeError, SaveError};
+use crate::util::{LoadError, NoHomeError, SaveError, expanduser};
 use ratatui::style::Style;
 use serde::{
-    de::{Deserializer, Unexpected},
     Deserialize,
+    de::{Deserializer, Unexpected},
 };
 use std::borrow::Cow;
 use std::fmt;
@@ -52,7 +52,7 @@ impl Config {
         let content = match fs_err::read_to_string(path) {
             Ok(content) => content,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound && allow_missing => {
-                return Ok(Config::default())
+                return Ok(Config::default());
             }
             Err(e) => return Err(ConfigError::Read(e)),
         };

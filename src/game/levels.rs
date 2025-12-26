@@ -3,8 +3,8 @@ use crate::consts;
 use crate::direction::Direction;
 use crate::util::Bounds;
 use rand::{
-    distr::{Bernoulli, Distribution},
     Rng,
+    distr::{Bernoulli, Distribution},
 };
 use ratatui::layout::{Position, Size};
 use std::collections::HashSet;

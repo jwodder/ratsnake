@@ -1,12 +1,12 @@
 use crate::consts;
-use crate::util::{data_dir, Bounds, LoadError, SaveError};
+use crate::util::{Bounds, LoadError, SaveError, data_dir};
 use enum_dispatch::enum_dispatch;
 use enum_map::Enum;
 use ratatui::layout::Size;
 use serde::{
+    Deserialize, Serialize,
     de::{Deserializer, Unexpected},
     ser::Serializer,
-    Deserialize, Serialize,
 };
 use std::fmt;
 use std::path::{Path, PathBuf};

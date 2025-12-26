@@ -8,17 +8,17 @@ use crate::app::Screen;
 use crate::command::Command;
 use crate::consts;
 use crate::direction::Direction;
-use crate::util::{center_rect, get_display_area, Globals};
+use crate::util::{Globals, center_rect, get_display_area};
 use crate::warning::{Warning, WarningOutcome};
-use crossterm::event::{poll, read, Event};
-use rand::{seq::IteratorRandom, Rng};
+use crossterm::event::{Event, poll, read};
+use rand::{Rng, seq::IteratorRandom};
 use ratatui::{
+    Frame,
     buffer::Buffer,
     layout::{Constraint, Layout, Margin, Position, Rect, Size},
     style::Style,
     text::{Line, Span},
     widgets::{Block, Widget},
-    Frame,
 };
 use std::collections::HashSet;
 use std::num::NonZeroU32;
@@ -190,7 +190,7 @@ impl<R> Game<R> {
                 PauseOpt::MainMenu => {
                     return Some(Screen::Main(crate::menu::MainMenu::new(
                         self.globals.clone(),
-                    )))
+                    )));
                 }
                 PauseOpt::Quit => return Some(Screen::Quit),
             },
@@ -212,7 +212,7 @@ impl<R> Game<R> {
                         Command::M => {
                             return Some(Screen::Main(crate::menu::MainMenu::new(
                                 self.globals.clone(),
-                            )))
+                            )));
                         }
                         Command::Quit | Command::Q => return Some(Screen::Quit),
                         _ => (),

@@ -1,7 +1,7 @@
 use crate::game::Game;
 use crate::hstable::HSTable;
 use crate::menu::MainMenu;
-use ratatui::{backend::Backend, Terminal};
+use ratatui::{Terminal, backend::Backend};
 
 /// The `ratsnake` application, the top-level struct for the program
 #[derive(Clone, Debug)]

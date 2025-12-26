@@ -3,14 +3,14 @@ use crate::command::Command;
 use crate::consts;
 use crate::menu::MainMenu;
 use crate::options::Options;
-use crate::util::{get_display_area, Globals};
+use crate::util::{Globals, get_display_area};
 use ratatui::{
+    Frame,
     buffer::Buffer,
     layout::{Constraint, Flex, Layout, Rect},
     style::Style,
     text::{Line, Span},
     widgets::{Scrollbar, ScrollbarOrientation, ScrollbarState, StatefulWidget, Widget},
-    Frame,
 };
 use std::fmt::Write;
 use std::num::NonZeroU32;
