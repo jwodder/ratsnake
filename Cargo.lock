@@ -1148,7 +1148,7 @@ dependencies = [
 
 [[package]]
 name = "ratsnake"
-version = "0.4.0-dev"
+version = "0.3.1"
 dependencies = [
  "anyhow",
  "crossterm",
