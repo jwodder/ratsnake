@@ -19,7 +19,10 @@ impl App {
     }
 
     /// Run the application on the given terminal
-    pub(crate) fn run<B: Backend>(mut self, mut terminal: Terminal<B>) -> std::io::Result<()> {
+    pub(crate) fn run<B: Backend>(mut self, mut terminal: Terminal<B>) -> std::io::Result<()>
+    where
+        std::io::Error: From<B::Error>,
+    {
         while !self.quitting() {
             self.draw(&mut terminal)?;
             self.process_input()?;
@@ -28,7 +31,10 @@ impl App {
     }
 
     /// Draw the current screen on the terminal
-    fn draw<B: Backend>(&self, terminal: &mut Terminal<B>) -> std::io::Result<()> {
+    fn draw<B: Backend>(&self, terminal: &mut Terminal<B>) -> std::io::Result<()>
+    where
+        std::io::Error: From<B::Error>,
+    {
         match self.screen {
             Screen::Main(ref menu) => {
                 terminal.draw(|frame| menu.draw(frame))?;
