@@ -1,7 +1,7 @@
 use crate::hstable::HSEntry;
 use crate::options::Options;
-use crate::util::{data_dir, LoadError, SaveError};
-use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
+use crate::util::{LoadError, SaveError, data_dir};
+use serde::{Deserialize, Serialize, de::Deserializer, ser::Serializer};
 use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};

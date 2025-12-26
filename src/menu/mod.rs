@@ -6,17 +6,17 @@ use crate::consts;
 use crate::game::Game;
 use crate::hstable::HSTable;
 use crate::options::{Adjustable, OptKey, OptValue, Options};
-use crate::util::{get_display_area, EnumExt, Globals};
+use crate::util::{EnumExt, Globals, get_display_area};
 use crate::warning::{Warning, WarningOutcome};
-use crossterm::event::{read, Event};
+use crossterm::event::{Event, read};
 use enum_map::{Enum, EnumMap};
 use ratatui::{
+    Frame,
     buffer::Buffer,
     layout::{Constraint, Flex, Layout, Rect},
     style::Style,
     text::{Line, Span},
     widgets::{Block, Padding, Widget},
-    Frame,
 };
 
 /// The main menu/startup screen
@@ -457,9 +457,10 @@ mod tests {
         fn interact_options() {
             let area = Rect::new(0, 0, 80, 24);
             let mut menu = MainMenu::new(Globals::default());
-            assert!(menu
-                .handle_event(Event::Key(KeyCode::Down.into()))
-                .is_none());
+            assert!(
+                menu.handle_event(Event::Key(KeyCode::Down.into()))
+                    .is_none()
+            );
             let mut buffer = Buffer::empty(area);
             menu.render(area, &mut buffer);
             #[rustfmt::skip]
@@ -515,9 +516,10 @@ mod tests {
             expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
-            assert!(menu
-                .handle_event(Event::Key(KeyCode::Char(' ').into()))
-                .is_none());
+            assert!(
+                menu.handle_event(Event::Key(KeyCode::Char(' ').into()))
+                    .is_none()
+            );
             let mut buffer = Buffer::empty(area);
             menu.render(area, &mut buffer);
             #[rustfmt::skip]
@@ -573,18 +575,22 @@ mod tests {
             expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
-            assert!(menu
-                .handle_event(Event::Key(KeyCode::Down.into()))
-                .is_none());
-            assert!(menu
-                .handle_event(Event::Key(KeyCode::Down.into()))
-                .is_none());
-            assert!(menu
-                .handle_event(Event::Key(KeyCode::Down.into()))
-                .is_none());
-            assert!(menu
-                .handle_event(Event::Key(KeyCode::Char(' ').into()))
-                .is_none());
+            assert!(
+                menu.handle_event(Event::Key(KeyCode::Down.into()))
+                    .is_none()
+            );
+            assert!(
+                menu.handle_event(Event::Key(KeyCode::Down.into()))
+                    .is_none()
+            );
+            assert!(
+                menu.handle_event(Event::Key(KeyCode::Down.into()))
+                    .is_none()
+            );
+            assert!(
+                menu.handle_event(Event::Key(KeyCode::Char(' ').into()))
+                    .is_none()
+            );
             let mut buffer = Buffer::empty(area);
             menu.render(area, &mut buffer);
             #[rustfmt::skip]
@@ -640,9 +646,10 @@ mod tests {
             expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
-            assert!(menu
-                .handle_event(Event::Key(KeyCode::Left.into()))
-                .is_none());
+            assert!(
+                menu.handle_event(Event::Key(KeyCode::Left.into()))
+                    .is_none()
+            );
             let mut buffer = Buffer::empty(area);
             menu.render(area, &mut buffer);
             #[rustfmt::skip]
@@ -698,9 +705,10 @@ mod tests {
             expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
-            assert!(menu
-                .handle_event(Event::Key(KeyCode::Left.into()))
-                .is_none());
+            assert!(
+                menu.handle_event(Event::Key(KeyCode::Left.into()))
+                    .is_none()
+            );
             let mut buffer = Buffer::empty(area);
             menu.render(area, &mut buffer);
             #[rustfmt::skip]

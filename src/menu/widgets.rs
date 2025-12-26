@@ -259,16 +259,20 @@ mod tests {
 
         #[test]
         fn rat_width() {
-            assert!(Logo::RAT
-                .iter()
-                .all(|ln| ln.len() == usize::from(Logo::RAT_WIDTH)));
+            assert!(
+                Logo::RAT
+                    .iter()
+                    .all(|ln| ln.len() == usize::from(Logo::RAT_WIDTH))
+            );
         }
 
         #[test]
         fn snake_width() {
-            assert!(Logo::SNAKE
-                .iter()
-                .all(|ln| ln.len() == usize::from(Logo::SNAKE_WIDTH)));
+            assert!(
+                Logo::SNAKE
+                    .iter()
+                    .all(|ln| ln.len() == usize::from(Logo::SNAKE_WIDTH))
+            );
         }
     }
 }

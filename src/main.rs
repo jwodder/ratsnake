@@ -94,7 +94,10 @@ impl Command {
                         p.display()
                     )?;
                 } else {
-                    writeln!(&mut stdout, "                    [Warning: could not determine default configuration file]")?;
+                    writeln!(
+                        &mut stdout,
+                        "                    [Warning: could not determine default configuration file]"
+                    )?;
                 }
                 writeln!(&mut stdout)?;
                 writeln!(
@@ -144,10 +147,10 @@ fn main() -> ExitCode {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             for cause in e.chain() {
-                if let Some(ioerr) = cause.downcast_ref::<io::Error>() {
-                    if ioerr.kind() == ErrorKind::BrokenPipe {
-                        return ExitCode::SUCCESS;
-                    }
+                if let Some(ioerr) = cause.downcast_ref::<io::Error>()
+                    && ioerr.kind() == ErrorKind::BrokenPipe
+                {
+                    return ExitCode::SUCCESS;
                 }
             }
             errmsg(e);
