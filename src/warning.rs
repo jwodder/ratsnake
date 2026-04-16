@@ -38,15 +38,9 @@ impl Warning {
         match (cmd, self.scrolling()) {
             (Command::Enter, _) => return Some(WarningOutcome::Dismissed),
             (Command::Quit, _) => return Some(WarningOutcome::Quit),
-            (Command::Up, true) => {
-                if self.scroll_offset > 0 {
-                    self.scroll_offset -= 1;
-                }
-            }
-            (Command::Down, true) => {
-                if self.scroll_offset < self.max_scroll.saturating_sub(1) {
-                    self.scroll_offset += 1;
-                }
+            (Command::Up, true) if self.scroll_offset > 0 => self.scroll_offset -= 1,
+            (Command::Down, true) if self.scroll_offset < self.max_scroll.saturating_sub(1) => {
+                self.scroll_offset += 1;
             }
             _ => (),
         }
