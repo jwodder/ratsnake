@@ -220,7 +220,7 @@ style = "white"
 
 [glyphs.collision]
 symbol = "\u00D7"
-style = "reversed bright_red"
+style = "reverse bright_red"
 
 [options]
 wraparound = false
