@@ -10,6 +10,7 @@ use crate::util::{EnumExt, Globals, get_display_area};
 use crate::warning::{Warning, WarningOutcome};
 use crossterm::event::{Event, read};
 use enum_map::{Enum, EnumMap};
+use rand::{Rng, RngExt};
 use ratatui::{
     Frame,
     buffer::Buffer,
@@ -101,6 +102,9 @@ impl MainMenu {
                 (Selection::Options(opt), Command::Space | Command::Enter) => {
                     self.opts_menu.toggle(opt);
                 }
+                (Selection::Randomize, Command::Enter) | (_, Command::At) => {
+                    self.opts_menu.randomize(rand::rng());
+                }
                 (Selection::HighScores, Command::Enter) | (_, Command::HighScores) => {
                     return Some(Screen::HSTable(HSTable::new(self.globals.clone())));
                 }
@@ -169,10 +173,7 @@ impl Widget for &MainMenu {
         let [options_area] = Layout::horizontal([OptionsMenu::WIDTH])
             .flex(Flex::Center)
             .areas(options_area);
-        let mut opts_state = match self.selection {
-            Selection::Options(opt) => Some(opt),
-            _ => None,
-        };
+        let mut opts_state = self.selection;
         (&self.opts_menu).render(options_area, buf, &mut opts_state);
 
         let hsstyle = if self.selection == Selection::HighScores {
@@ -237,6 +238,9 @@ enum Selection {
     /// The options sub-menu
     Options(OptKey),
 
+    /// The "[Randomize (@)]" button
+    Randomize,
+
     /// The "[High Scores (H)]" button
     HighScores,
 
@@ -255,7 +259,7 @@ impl OptionsMenu {
     /// The height that should be used for the `Rect` passed to
     /// `&OptionsMenu::render()`
     #[allow(clippy::cast_possible_truncation)]
-    const HEIGHT: u16 = (OptKey::LENGTH as u16) + 2 /* for border */;
+    const HEIGHT: u16 = (OptKey::LENGTH as u16) + 2 /* for border */ + 2 /* for "Randomize" button */;
 
     /// The width of the horizontal padding on each inner side of the menu
     /// border
@@ -303,13 +307,21 @@ impl OptionsMenu {
     fn toggle(&mut self, opt: OptKey) {
         self.settings[opt].toggle();
     }
+
+    fn randomize<R: Rng>(&mut self, mut rng: R) {
+        self.settings = EnumMap::from_fn(|key| match key {
+            OptKey::Wraparound => OptValue::Bool(rng.random()),
+            OptKey::Obstacles => OptValue::Bool(rng.random()),
+            OptKey::Fruits => OptValue::FruitQty(rng.random()),
+            OptKey::LevelSize => OptValue::LevelSize(rng.random()),
+        });
+    }
 }
 
 impl StatefulWidget for &OptionsMenu {
-    type State = Option<OptKey>;
+    type State = Selection;
 
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Option<OptKey>) {
-        let selection = state.as_ref().copied();
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Selection) {
         let block = Block::bordered()
             .title(" Options: ")
             .padding(Padding::horizontal(OptionsMenu::HORIZONTAL_PADDING));
@@ -319,7 +331,7 @@ impl StatefulWidget for &OptionsMenu {
             .map(|key| (key, self.settings[key]))
             .zip(menu_area.rows())
         {
-            let selected = Some(key) == selection;
+            let selected = *state == Selection::Options(key);
             let style = if selected {
                 consts::MENU_SELECTION_STYLE
             } else {
@@ -334,6 +346,20 @@ impl StatefulWidget for &OptionsMenu {
                 gutter = usize::from(OptionsMenu::LABEL_VALUE_GUTTER),
             );
             Span::styled(s, style).render(row, buf);
+        }
+        if let Some(rand_row) = menu_area.rows().next_back() {
+            let rand_style = if *state == Selection::Randomize {
+                consts::MENU_SELECTION_STYLE
+            } else {
+                Style::new()
+            };
+            Line::from_iter([
+                Span::styled("[Randomize (", rand_style),
+                Span::styled("@", consts::KEY_STYLE.patch(rand_style)),
+                Span::styled(")]", rand_style),
+            ])
+            .centered()
+            .render(rand_row, buf);
         }
     }
 }
@@ -367,17 +393,17 @@ mod tests {
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
                  "           ┌ Options: ────────────────┐                                         ",
-                 "           │   Wraparound     [ ]     │          Move the snake with:           ",
-                 "           │   Obstacles      [ ]     │                 ← ↓ ↑ →                 ",
-                 "           │   Fruits      ◁   1    ▶ │             or: h j k l                 ",
-                 "           │   Level Size  ◀ Large  ▷ │             or: a s w d                 ",
-                 "           └──────────────────────────┘             or: 4 2 8 6                 ",
-                 "                                                 Eat the fruit, but             ",
-                 "                [High Scores (H)]                don't hit yourself!            ",
+                 "           │   Wraparound     [ ]     │                                         ",
+                 "           │   Obstacles      [ ]     │          Move the snake with:           ",
+                 "           │   Fruits      ◁   1    ▶ │                 ← ↓ ↑ →                 ",
+                 "           │   Level Size  ◀ Large  ▷ │             or: h j k l                 ",
+                 "           │                          │             or: a s w d                 ",
+                 "           │     [Randomize (@)]      │             or: 4 2 8 6                 ",
+                 "           └──────────────────────────┘          Eat the fruit, but             ",
+                 "                                                 don't hit yourself!            ",
+                 "                [High Scores (H)]                                               ",
                  "                                                                                ",
                  "                    [Quit (q)]                                                  ",
-                 "                                                                                ",
-                 "                                                                                ",
                  "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
@@ -386,24 +412,25 @@ mod tests {
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
             expected.set_style(Rect::new(27, 9, 1, 1), consts::KEY_STYLE); // `p`
             expected.set_style(Rect::new(20, 9, 10, 1), consts::MENU_SELECTION_STYLE); // Play button
-            expected.set_style(Rect::new(30, 18, 1, 1), consts::KEY_STYLE); // `H`
-            expected.set_style(Rect::new(27, 20, 1, 1), consts::KEY_STYLE); // `q`
-            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
-            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
-            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
-            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `→`
-            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `h`
-            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `j`
-            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `k`
-            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `l`
-            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `a`
-            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `w`
-            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `4`
-            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `2`
-            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `8`
-            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
+            expected.set_style(Rect::new(29, 17, 1, 1), consts::KEY_STYLE); // `@`
+            expected.set_style(Rect::new(30, 20, 1, 1), consts::KEY_STYLE); // `H`
+            expected.set_style(Rect::new(27, 22, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 17, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 17, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 17, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 17, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
         }
 
@@ -431,17 +458,17 @@ mod tests {
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
                  "           ┌ Options: ────────────────┐                                         ",
-                 "           │ » Wraparound     [ ]     │          Move the snake with:           ",
-                 "           │   Obstacles      [ ]     │                 ← ↓ ↑ →                 ",
-                 "           │   Fruits      ◁   1    ▶ │             or: h j k l                 ",
-                 "           │   Level Size  ◀ Large  ▷ │             or: a s w d                 ",
-                 "           └──────────────────────────┘             or: 4 2 8 6                 ",
-                 "                                                 Eat the fruit, but             ",
-                 "                [High Scores (H)]                don't hit yourself!            ",
+                 "           │ » Wraparound     [ ]     │                                         ",
+                 "           │   Obstacles      [ ]     │          Move the snake with:           ",
+                 "           │   Fruits      ◁   1    ▶ │                 ← ↓ ↑ →                 ",
+                 "           │   Level Size  ◀ Large  ▷ │             or: h j k l                 ",
+                 "           │                          │             or: a s w d                 ",
+                 "           │     [Randomize (@)]      │             or: 4 2 8 6                 ",
+                 "           └──────────────────────────┘          Eat the fruit, but             ",
+                 "                                                 don't hit yourself!            ",
+                 "                [High Scores (H)]                                               ",
                  "                                                                                ",
                  "                    [Quit (q)]                                                  ",
-                 "                                                                                ",
-                 "                                                                                ",
                  "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
@@ -450,24 +477,25 @@ mod tests {
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
             expected.set_style(Rect::new(27, 9, 1, 1), consts::KEY_STYLE); // `p`
             expected.set_style(Rect::new(13, 12, 24, 1), consts::MENU_SELECTION_STYLE); // "Wraparound" option
-            expected.set_style(Rect::new(30, 18, 1, 1), consts::KEY_STYLE); // `H`
-            expected.set_style(Rect::new(27, 20, 1, 1), consts::KEY_STYLE); // `q`
-            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
-            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
-            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
-            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `→`
-            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `h`
-            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `j`
-            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `k`
-            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `l`
-            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `a`
-            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `w`
-            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `4`
-            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `2`
-            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `8`
-            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
+            expected.set_style(Rect::new(29, 17, 1, 1), consts::KEY_STYLE); // `@`
+            expected.set_style(Rect::new(30, 20, 1, 1), consts::KEY_STYLE); // `H`
+            expected.set_style(Rect::new(27, 22, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 17, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 17, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 17, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 17, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(
@@ -490,17 +518,17 @@ mod tests {
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
                  "           ┌ Options: ────────────────┐                                         ",
-                 "           │ » Wraparound     [✓]     │          Move the snake with:           ",
-                 "           │   Obstacles      [ ]     │                 ← ↓ ↑ →                 ",
-                 "           │   Fruits      ◁   1    ▶ │             or: h j k l                 ",
-                 "           │   Level Size  ◀ Large  ▷ │             or: a s w d                 ",
-                 "           └──────────────────────────┘             or: 4 2 8 6                 ",
-                 "                                                 Eat the fruit, but             ",
-                 "                [High Scores (H)]                don't hit yourself!            ",
+                 "           │ » Wraparound     [✓]     │                                         ",
+                 "           │   Obstacles      [ ]     │          Move the snake with:           ",
+                 "           │   Fruits      ◁   1    ▶ │                 ← ↓ ↑ →                 ",
+                 "           │   Level Size  ◀ Large  ▷ │             or: h j k l                 ",
+                 "           │                          │             or: a s w d                 ",
+                 "           │     [Randomize (@)]      │             or: 4 2 8 6                 ",
+                 "           └──────────────────────────┘          Eat the fruit, but             ",
+                 "                                                 don't hit yourself!            ",
+                 "                [High Scores (H)]                                               ",
                  "                                                                                ",
                  "                    [Quit (q)]                                                  ",
-                 "                                                                                ",
-                 "                                                                                ",
                  "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
@@ -509,24 +537,25 @@ mod tests {
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
             expected.set_style(Rect::new(27, 9, 1, 1), consts::KEY_STYLE); // `p`
             expected.set_style(Rect::new(13, 12, 24, 1), consts::MENU_SELECTION_STYLE); // "Wraparound" option
-            expected.set_style(Rect::new(30, 18, 1, 1), consts::KEY_STYLE); // `H`
-            expected.set_style(Rect::new(27, 20, 1, 1), consts::KEY_STYLE); // `q`
-            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
-            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
-            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
-            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `→`
-            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `h`
-            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `j`
-            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `k`
-            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `l`
-            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `a`
-            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `w`
-            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `4`
-            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `2`
-            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `8`
-            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
+            expected.set_style(Rect::new(29, 17, 1, 1), consts::KEY_STYLE); // `@`
+            expected.set_style(Rect::new(30, 20, 1, 1), consts::KEY_STYLE); // `H`
+            expected.set_style(Rect::new(27, 22, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 17, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 17, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 17, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 17, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(
@@ -561,17 +590,17 @@ mod tests {
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
                  "           ┌ Options: ────────────────┐                                         ",
-                 "           │   Wraparound     [✓]     │          Move the snake with:           ",
-                 "           │   Obstacles      [ ]     │                 ← ↓ ↑ →                 ",
-                 "           │   Fruits      ◁   1    ▶ │             or: h j k l                 ",
-                 "           │ » Level Size  ◀ Large  ▷ │             or: a s w d                 ",
-                 "           └──────────────────────────┘             or: 4 2 8 6                 ",
-                 "                                                 Eat the fruit, but             ",
-                 "                [High Scores (H)]                don't hit yourself!            ",
+                 "           │   Wraparound     [✓]     │                                         ",
+                 "           │   Obstacles      [ ]     │          Move the snake with:           ",
+                 "           │   Fruits      ◁   1    ▶ │                 ← ↓ ↑ →                 ",
+                 "           │ » Level Size  ◀ Large  ▷ │             or: h j k l                 ",
+                 "           │                          │             or: a s w d                 ",
+                 "           │     [Randomize (@)]      │             or: 4 2 8 6                 ",
+                 "           └──────────────────────────┘          Eat the fruit, but             ",
+                 "                                                 don't hit yourself!            ",
+                 "                [High Scores (H)]                                               ",
                  "                                                                                ",
                  "                    [Quit (q)]                                                  ",
-                 "                                                                                ",
-                 "                                                                                ",
                  "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
@@ -580,24 +609,25 @@ mod tests {
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
             expected.set_style(Rect::new(27, 9, 1, 1), consts::KEY_STYLE); // `p`
             expected.set_style(Rect::new(13, 15, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
-            expected.set_style(Rect::new(30, 18, 1, 1), consts::KEY_STYLE); // `H`
-            expected.set_style(Rect::new(27, 20, 1, 1), consts::KEY_STYLE); // `q`
-            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
-            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
-            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
-            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `→`
-            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `h`
-            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `j`
-            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `k`
-            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `l`
-            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `a`
-            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `w`
-            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `4`
-            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `2`
-            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `8`
-            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
+            expected.set_style(Rect::new(29, 17, 1, 1), consts::KEY_STYLE); // `@`
+            expected.set_style(Rect::new(30, 20, 1, 1), consts::KEY_STYLE); // `H`
+            expected.set_style(Rect::new(27, 22, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 17, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 17, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 17, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 17, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(
@@ -620,17 +650,17 @@ mod tests {
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
                  "           ┌ Options: ────────────────┐                                         ",
-                 "           │   Wraparound     [✓]     │          Move the snake with:           ",
-                 "           │   Obstacles      [ ]     │                 ← ↓ ↑ →                 ",
-                 "           │   Fruits      ◁   1    ▶ │             or: h j k l                 ",
-                 "           │ » Level Size  ◀ Medium ▶ │             or: a s w d                 ",
-                 "           └──────────────────────────┘             or: 4 2 8 6                 ",
-                 "                                                 Eat the fruit, but             ",
-                 "                [High Scores (H)]                don't hit yourself!            ",
+                 "           │   Wraparound     [✓]     │                                         ",
+                 "           │   Obstacles      [ ]     │          Move the snake with:           ",
+                 "           │   Fruits      ◁   1    ▶ │                 ← ↓ ↑ →                 ",
+                 "           │ » Level Size  ◀ Medium ▶ │             or: h j k l                 ",
+                 "           │                          │             or: a s w d                 ",
+                 "           │     [Randomize (@)]      │             or: 4 2 8 6                 ",
+                 "           └──────────────────────────┘          Eat the fruit, but             ",
+                 "                                                 don't hit yourself!            ",
+                 "                [High Scores (H)]                                               ",
                  "                                                                                ",
                  "                    [Quit (q)]                                                  ",
-                 "                                                                                ",
-                 "                                                                                ",
                  "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
@@ -639,24 +669,25 @@ mod tests {
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
             expected.set_style(Rect::new(27, 9, 1, 1), consts::KEY_STYLE); // `p`
             expected.set_style(Rect::new(13, 15, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
-            expected.set_style(Rect::new(30, 18, 1, 1), consts::KEY_STYLE); // `H`
-            expected.set_style(Rect::new(27, 20, 1, 1), consts::KEY_STYLE); // `q`
-            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
-            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
-            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
-            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `→`
-            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `h`
-            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `j`
-            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `k`
-            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `l`
-            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `a`
-            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `w`
-            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `4`
-            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `2`
-            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `8`
-            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
+            expected.set_style(Rect::new(29, 17, 1, 1), consts::KEY_STYLE); // `@`
+            expected.set_style(Rect::new(30, 20, 1, 1), consts::KEY_STYLE); // `H`
+            expected.set_style(Rect::new(27, 22, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 17, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 17, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 17, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 17, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
 
             assert!(
@@ -679,17 +710,17 @@ mod tests {
                  "                    [Play (p)]                                                  ",
                  "                                                                                ",
                  "           ┌ Options: ────────────────┐                                         ",
-                 "           │   Wraparound     [✓]     │          Move the snake with:           ",
-                 "           │   Obstacles      [ ]     │                 ← ↓ ↑ →                 ",
-                 "           │   Fruits      ◁   1    ▶ │             or: h j k l                 ",
-                 "           │ » Level Size  ◁ Small  ▶ │             or: a s w d                 ",
-                 "           └──────────────────────────┘             or: 4 2 8 6                 ",
-                 "                                                 Eat the fruit, but             ",
-                 "                [High Scores (H)]                don't hit yourself!            ",
+                 "           │   Wraparound     [✓]     │                                         ",
+                 "           │   Obstacles      [ ]     │          Move the snake with:           ",
+                 "           │   Fruits      ◁   1    ▶ │                 ← ↓ ↑ →                 ",
+                 "           │ » Level Size  ◁ Small  ▶ │             or: h j k l                 ",
+                 "           │                          │             or: a s w d                 ",
+                 "           │     [Randomize (@)]      │             or: 4 2 8 6                 ",
+                 "           └──────────────────────────┘          Eat the fruit, but             ",
+                 "                                                 don't hit yourself!            ",
+                 "                [High Scores (H)]                                               ",
                  "                                                                                ",
                  "                    [Quit (q)]                                                  ",
-                 "                                                                                ",
-                 "                                                                                ",
                  "                                                                                ",
             ]);
             expected.set_style(Rect::new(19, 0, 15, 5), consts::FRUIT_STYLE); // "Rat"
@@ -698,24 +729,25 @@ mod tests {
             expected.set_style(Rect::new(48, 6, 1, 1), consts::FRUIT_STYLE); // fruit in logo
             expected.set_style(Rect::new(27, 9, 1, 1), consts::KEY_STYLE); // `p`
             expected.set_style(Rect::new(13, 15, 24, 1), consts::MENU_SELECTION_STYLE); // "Level Size" option
-            expected.set_style(Rect::new(30, 18, 1, 1), consts::KEY_STYLE); // `H`
-            expected.set_style(Rect::new(27, 20, 1, 1), consts::KEY_STYLE); // `q`
-            expected.set_style(Rect::new(56, 13, 1, 1), consts::KEY_STYLE); // `←`
-            expected.set_style(Rect::new(58, 13, 1, 1), consts::KEY_STYLE); // `↓`
-            expected.set_style(Rect::new(60, 13, 1, 1), consts::KEY_STYLE); // `↑`
-            expected.set_style(Rect::new(62, 13, 1, 1), consts::KEY_STYLE); // `→`
-            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `h`
-            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `j`
-            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `k`
-            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `l`
-            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `a`
-            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `w`
-            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `s`
-            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `4`
-            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `2`
-            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `8`
-            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `6`
+            expected.set_style(Rect::new(29, 17, 1, 1), consts::KEY_STYLE); // `@`
+            expected.set_style(Rect::new(30, 20, 1, 1), consts::KEY_STYLE); // `H`
+            expected.set_style(Rect::new(27, 22, 1, 1), consts::KEY_STYLE); // `q`
+            expected.set_style(Rect::new(56, 14, 1, 1), consts::KEY_STYLE); // `←`
+            expected.set_style(Rect::new(58, 14, 1, 1), consts::KEY_STYLE); // `↓`
+            expected.set_style(Rect::new(60, 14, 1, 1), consts::KEY_STYLE); // `↑`
+            expected.set_style(Rect::new(62, 14, 1, 1), consts::KEY_STYLE); // `→`
+            expected.set_style(Rect::new(56, 15, 1, 1), consts::KEY_STYLE); // `h`
+            expected.set_style(Rect::new(58, 15, 1, 1), consts::KEY_STYLE); // `j`
+            expected.set_style(Rect::new(60, 15, 1, 1), consts::KEY_STYLE); // `k`
+            expected.set_style(Rect::new(62, 15, 1, 1), consts::KEY_STYLE); // `l`
+            expected.set_style(Rect::new(56, 16, 1, 1), consts::KEY_STYLE); // `a`
+            expected.set_style(Rect::new(58, 16, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(60, 16, 1, 1), consts::KEY_STYLE); // `w`
+            expected.set_style(Rect::new(62, 16, 1, 1), consts::KEY_STYLE); // `s`
+            expected.set_style(Rect::new(56, 17, 1, 1), consts::KEY_STYLE); // `4`
+            expected.set_style(Rect::new(58, 17, 1, 1), consts::KEY_STYLE); // `2`
+            expected.set_style(Rect::new(60, 17, 1, 1), consts::KEY_STYLE); // `8`
+            expected.set_style(Rect::new(62, 17, 1, 1), consts::KEY_STYLE); // `6`
             pretty_assertions::assert_eq!(buffer, expected);
         }
 
@@ -731,7 +763,8 @@ mod tests {
             }
             assert_eq!(menu.selection, Selection::Options(OptKey::max()));
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
-            assert_eq!(menu.selection, Selection::HighScores);
+            assert_eq!(menu.selection, Selection::Randomize);
+            assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
