@@ -56,7 +56,11 @@ impl Config {
             }
             Err(e) => return Err(ConfigError::Read(e)),
         };
-        toml::from_str(&content).map_err(Into::into)
+        let mut cfg = toml::from_str::<Config>(&content)?;
+        if let Some(pp) = path.parent() {
+            cfg.files = cfg.files.resolve_relative(pp);
+        }
+        Ok(cfg)
     }
 
     /// Return the filepath at which gameplay options should be stored: the
@@ -166,6 +170,24 @@ pub(crate) struct FileConfig {
     /// Whether to ignore errors that occur while saving & loading options &
     /// high-score files.
     ignore_errors: bool,
+}
+
+impl FileConfig {
+    fn resolve_relative(self, dirpath: &Path) -> FileConfig {
+        let options_file = match self.options_file {
+            OptionsFile::Path(p) if p.is_relative() => OptionsFile::Path(dirpath.join(p)),
+            other => other,
+        };
+        let high_scores_dir = match self.high_scores_dir {
+            Some(p) if p.is_relative() => Some(dirpath.join(p)),
+            other => other,
+        };
+        FileConfig {
+            options_file,
+            high_scores_dir,
+            ignore_errors: self.ignore_errors,
+        }
+    }
 }
 
 #[derive(Clone, Deserialize, Debug, Default, Eq, PartialEq)]
@@ -459,12 +481,13 @@ mod tests {
         #[test]
         fn options_file_path() {
             let tmp = NamedTempFile::new().unwrap();
+            #[cfg(windows)]
+            let opts_file = r"C:\home\luser\stuff\ratsnake\options.json";
+            #[cfg(not(windows))]
+            let opts_file = "/home/luser/stuff/ratsnake/options.json";
             std::fs::write(
                 tmp.path(),
-                concat!(
-                    "[files]\n",
-                    "options-file = \"/home/luser/stuff/ratsnake/options.json\"\n"
-                ),
+                format!("[files]\noptions-file = {opts_file:?}\n"),
             )
             .unwrap();
             let cfg = Config::load(tmp.path(), false).unwrap();
@@ -472,9 +495,7 @@ mod tests {
                 cfg,
                 Config {
                     files: FileConfig {
-                        options_file: OptionsFile::Path(PathBuf::from(
-                            "/home/luser/stuff/ratsnake/options.json"
-                        )),
+                        options_file: OptionsFile::Path(PathBuf::from(opts_file)),
                         ..FileConfig::default()
                     },
                     ..Config::default()
@@ -482,9 +503,7 @@ mod tests {
             );
             assert_eq!(
                 cfg.options_file(),
-                Ok(Some(Cow::from(PathBuf::from(
-                    "/home/luser/stuff/ratsnake/options.json"
-                ))))
+                Ok(Some(Cow::from(PathBuf::from(opts_file))))
             );
         }
 
@@ -540,6 +559,41 @@ mod tests {
                 }
             );
             assert_eq!(cfg.options_file(), Ok(None));
+        }
+
+        #[test]
+        fn relative_file_paths() {
+            let tmp = NamedTempFile::new().unwrap();
+            let parent = tmp.path().parent().unwrap();
+            std::fs::write(
+                tmp.path(),
+                concat!(
+                    "[files]\n",
+                    "high-scores-dir = \"scores\"\n",
+                    "options-file = \"snake/options.json\"\n",
+                ),
+            )
+            .unwrap();
+            let cfg = Config::load(tmp.path(), false).unwrap();
+            assert_eq!(
+                cfg,
+                Config {
+                    files: FileConfig {
+                        options_file: OptionsFile::Path(parent.join("snake/options.json")),
+                        high_scores_dir: Some(parent.join("scores")),
+                        ..FileConfig::default()
+                    },
+                    ..Config::default()
+                }
+            );
+            assert_eq!(
+                cfg.options_file(),
+                Ok(Some(Cow::from(parent.join("snake/options.json"))))
+            );
+            assert_eq!(
+                cfg.high_scores_file(),
+                Ok(parent.join("scores").join("arcade.json"))
+            );
         }
 
         #[test]

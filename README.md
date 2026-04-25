@@ -147,17 +147,20 @@ unless indicated otherwise:
     - `high-scores-dir` (string) — Path to a directory (which `ratsnake` will
       create if it doesn't already exist) in which high scores will be stored.
       An initial `~/` will be replaced by the path to the user's home
-      directory.  The default path is `$DATA_DIR/highscores/`, where
-      `$DATA_DIR` is defined below.
+      directory.  A relative path will be resolved relative to the directory in
+      which the configuration file is located.  The default path is
+      `$DATA_DIR/highscores/`, where `$DATA_DIR` is defined below.
     - `ignore-errors` (boolean) — whether to suppress notifications about any
       errors that occur while reading or writing the options file or high score
       file
     - `options-file` (string or boolean) — File path at which `ratsnake` will
       save & restore gameplay options.  An initial `~/` will be replaced by the
-      path to the user's home directory.  Setting this to `false` disables
-      saving & loading of options.  Setting this to `true` causes the default
-      path to be used, the same as if the option were omitted.  The default
-      path is `$DATA_DIR/options.json`, where `$DATA_DIR` is defined below.
+      path to the user's home directory.  A relative path will be resolved
+      relative to the directory in which the configuration file is located.
+      Setting this to `false` disables saving & loading of options.  Setting
+      this to `true` causes the default path to be used, the same as if the
+      option were omitted.  The default path is `$DATA_DIR/options.json`, where
+      `$DATA_DIR` is defined below.
 
 - `[glyphs]` — Set the symbols & colors used to draw various elements of the
   game display.  Each of the below keys takes as its value a subtable
