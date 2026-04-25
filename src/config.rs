@@ -56,7 +56,11 @@ impl Config {
             }
             Err(e) => return Err(ConfigError::Read(e)),
         };
-        toml::from_str(&content).map_err(Into::into)
+        let mut cfg = toml::from_str::<Config>(&content)?;
+        if let Some(pp) = path.parent() {
+            cfg.files = cfg.files.resolve_relative(pp);
+        }
+        Ok(cfg)
     }
 
     /// Return the filepath at which gameplay options should be stored: the
@@ -166,6 +170,24 @@ pub(crate) struct FileConfig {
     /// Whether to ignore errors that occur while saving & loading options &
     /// high-score files.
     ignore_errors: bool,
+}
+
+impl FileConfig {
+    fn resolve_relative(self, dirpath: &Path) -> FileConfig {
+        let options_file = match self.options_file {
+            OptionsFile::Path(p) if p.is_relative() => OptionsFile::Path(dirpath.join(p)),
+            other => other,
+        };
+        let high_scores_dir = match self.high_scores_dir {
+            Some(p) if p.is_relative() => Some(dirpath.join(p)),
+            other => other,
+        };
+        FileConfig {
+            options_file,
+            high_scores_dir,
+            ignore_errors: self.ignore_errors,
+        }
+    }
 }
 
 #[derive(Clone, Deserialize, Debug, Default, Eq, PartialEq)]
