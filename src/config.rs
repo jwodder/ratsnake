@@ -287,6 +287,8 @@ pub(crate) struct GlyphConfig {
     pub(crate) fruit: Glyph,
     pub(crate) obstacle: Glyph,
     pub(crate) collision: Glyph,
+    pub(crate) border: BorderConfig,
+    pub(crate) wraparound: BorderConfig,
 }
 
 impl Default for GlyphConfig {
@@ -312,6 +314,32 @@ impl Default for GlyphConfig {
                 symbol: Symbol::try_from(consts::COLLISION_SYMBOL)
                     .expect("COLLISION_SYMBOL should be a valid Symbol"),
                 style: consts::COLLISION_STYLE,
+            },
+            border: BorderConfig {
+                symbol: BorderSymbol::Split {
+                    top: Symbol::try_from('─').expect("'─' should be a valid Symbol"),
+                    bottom: Symbol::try_from('─').expect("'─' should be a valid Symbol"),
+                    left: Symbol::try_from('│').expect("'│' should be a valid Symbol"),
+                    right: Symbol::try_from('│').expect("'│' should be a valid Symbol"),
+                    top_left: Symbol::try_from('┌').expect("'┌' should be a valid Symbol"),
+                    top_right: Symbol::try_from('┐').expect("'┐' should be a valid Symbol"),
+                    bottom_left: Symbol::try_from('└').expect("'└' should be a valid Symbol"),
+                    bottom_right: Symbol::try_from('┘').expect("'┘' should be a valid Symbol"),
+                },
+                style: Style::default(),
+            },
+            wraparound: BorderConfig {
+                symbol: BorderSymbol::Split {
+                    top: Symbol::try_from('⋯').expect("'⋯' should be a valid Symbol"),
+                    bottom: Symbol::try_from('⋯').expect("'⋯' should be a valid Symbol"),
+                    left: Symbol::try_from('⋮').expect("'⋮' should be a valid Symbol"),
+                    right: Symbol::try_from('⋮').expect("'⋮' should be a valid Symbol"),
+                    top_left: Symbol::try_from('·').expect("'·' should be a valid Symbol"),
+                    top_right: Symbol::try_from('·').expect("'·' should be a valid Symbol"),
+                    bottom_left: Symbol::try_from('·').expect("'·' should be a valid Symbol"),
+                    bottom_right: Symbol::try_from('·').expect("'·' should be a valid Symbol"),
+                },
+                style: Style::default(),
             },
         }
     }
@@ -446,6 +474,60 @@ impl SnakeHeadSymbol {
             (SnakeHeadSymbol::Split { west, .. }, Direction::West) => west,
         }
     }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct BorderConfig {
+    pub(crate) symbol: BorderSymbol,
+
+    #[serde(default, with = "parse_style::serde::ratatui::style")]
+    pub(crate) style: Style,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields, untagged)]
+pub(crate) enum BorderSymbol {
+    All(Symbol),
+    #[serde(rename_all = "kebab-case")]
+    Split {
+        top: Symbol,
+        bottom: Symbol,
+        left: Symbol,
+        right: Symbol,
+        top_left: Symbol,
+        top_right: Symbol,
+        bottom_left: Symbol,
+        bottom_right: Symbol,
+    },
+}
+
+impl BorderSymbol {
+    pub(crate) fn for_part(&self, part: BorderPart) -> &Symbol {
+        match (self, part) {
+            (BorderSymbol::All(sym), _) => sym,
+            (BorderSymbol::Split { top, .. }, BorderPart::Top) => top,
+            (BorderSymbol::Split { bottom, .. }, BorderPart::Bottom) => bottom,
+            (BorderSymbol::Split { left, .. }, BorderPart::Left) => left,
+            (BorderSymbol::Split { right, .. }, BorderPart::Right) => right,
+            (BorderSymbol::Split { top_left, .. }, BorderPart::TopLeft) => top_left,
+            (BorderSymbol::Split { top_right, .. }, BorderPart::TopRight) => top_right,
+            (BorderSymbol::Split { bottom_left, .. }, BorderPart::BottomLeft) => bottom_left,
+            (BorderSymbol::Split { bottom_right, .. }, BorderPart::BottomRight) => bottom_right,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum BorderPart {
+    Top,
+    Bottom,
+    Left,
+    Right,
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
 }
 
 #[derive(Debug, Error)]
@@ -597,9 +679,18 @@ mod tests {
         }
 
         #[test]
-        fn snake_head_str() {
+        fn compound_symbol_strs() {
             let tmp = NamedTempFile::new().unwrap();
-            std::fs::write(tmp.path(), "[glyphs]\nsnake-head.symbol = \"@\"\n").unwrap();
+            std::fs::write(
+                tmp.path(),
+                concat!(
+                    "[glyphs]\n",
+                    "snake-head.symbol = \"@\"\n",
+                    "border.symbol = \"X\"\n",
+                    "wraparound.symbol = \"~\"\n",
+                ),
+            )
+            .unwrap();
             let cfg = Config::load(tmp.path(), false).unwrap();
             assert_eq!(
                 cfg,
@@ -607,6 +698,14 @@ mod tests {
                     glyphs: GlyphConfig {
                         snake_head: SnakeHeadConfig {
                             symbol: SnakeHeadSymbol::All("@".parse::<Symbol>().unwrap()),
+                            style: Style::new(),
+                        },
+                        border: BorderConfig {
+                            symbol: BorderSymbol::All("X".parse::<Symbol>().unwrap()),
+                            style: Style::new(),
+                        },
+                        wraparound: BorderConfig {
+                            symbol: BorderSymbol::All("~".parse::<Symbol>().unwrap()),
                             style: Style::new(),
                         },
                         ..GlyphConfig::default()
@@ -617,11 +716,16 @@ mod tests {
         }
 
         #[test]
-        fn snake_head_styled_str() {
+        fn compound_symbol_styled_strs() {
             let tmp = NamedTempFile::new().unwrap();
             std::fs::write(
                 tmp.path(),
-                "[glyphs]\nsnake-head = { symbol = \"@\", style = \"red\" }\n",
+                concat!(
+                    "[glyphs]\n",
+                    "snake-head = { symbol = \"@\", style = \"red\" }\n",
+                    "border = { symbol = \"X\", style = \"bold\" }\n",
+                    "wraparound = { symbol = \"~\", style = \"magenta\" }\n",
+                ),
             )
             .unwrap();
             let cfg = Config::load(tmp.path(), false).unwrap();
@@ -633,6 +737,14 @@ mod tests {
                             symbol: SnakeHeadSymbol::All("@".parse::<Symbol>().unwrap()),
                             style: Style::new().fg(Color::Indexed(1)),
                         },
+                        border: BorderConfig {
+                            symbol: BorderSymbol::All("X".parse::<Symbol>().unwrap()),
+                            style: Style::new().bold(),
+                        },
+                        wraparound: BorderConfig {
+                            symbol: BorderSymbol::All("~".parse::<Symbol>().unwrap()),
+                            style: Style::new().fg(Color::Indexed(5)),
+                        },
                         ..GlyphConfig::default()
                     },
                     ..Config::default()
@@ -641,13 +753,33 @@ mod tests {
         }
 
         #[test]
-        fn snake_head_directions() {
+        fn compound_symbol_tables() {
             let tmp = NamedTempFile::new().unwrap();
             std::fs::write(
                 tmp.path(),
                 concat!(
                     "[glyphs.snake-head]\n",
                     "symbol = { north = \"↑\", south = \"↓\", east = \"→\", west = \"←\" }\n",
+                    "\n",
+                    "[glyphs.border.symbol]\n",
+                    "top = \"v\"\n",
+                    "bottom = \"^\"\n",
+                    "left = \">\"\n",
+                    "right = \"<\"\n",
+                    "top-left = \"X\"\n",
+                    "top-right = \"X\"\n",
+                    "bottom-left = \"X\"\n",
+                    "bottom-right = \"X\"\n",
+                    "\n",
+                    "[glyphs.wraparound.symbol]\n",
+                    "top = \"↑\"\n",
+                    "bottom = \"↓\"\n",
+                    "left = \"←\"\n",
+                    "right = \"→\"\n",
+                    "top-left = \" \"\n",
+                    "top-right = \" \"\n",
+                    "bottom-left = \" \"\n",
+                    "bottom-right = \" \"\n",
                 ),
             )
             .unwrap();
@@ -665,6 +797,32 @@ mod tests {
                             },
                             style: Style::new(),
                         },
+                        border: BorderConfig {
+                            symbol: BorderSymbol::Split {
+                                top: "v".parse::<Symbol>().unwrap(),
+                                bottom: "^".parse::<Symbol>().unwrap(),
+                                left: ">".parse::<Symbol>().unwrap(),
+                                right: "<".parse::<Symbol>().unwrap(),
+                                top_left: "X".parse::<Symbol>().unwrap(),
+                                top_right: "X".parse::<Symbol>().unwrap(),
+                                bottom_left: "X".parse::<Symbol>().unwrap(),
+                                bottom_right: "X".parse::<Symbol>().unwrap(),
+                            },
+                            style: Style::new(),
+                        },
+                        wraparound: BorderConfig {
+                            symbol: BorderSymbol::Split {
+                                top: "↑".parse::<Symbol>().unwrap(),
+                                bottom: "↓".parse::<Symbol>().unwrap(),
+                                left: "←".parse::<Symbol>().unwrap(),
+                                right: "→".parse::<Symbol>().unwrap(),
+                                top_left: " ".parse::<Symbol>().unwrap(),
+                                top_right: " ".parse::<Symbol>().unwrap(),
+                                bottom_left: " ".parse::<Symbol>().unwrap(),
+                                bottom_right: " ".parse::<Symbol>().unwrap(),
+                            },
+                            style: Style::new(),
+                        },
                         ..GlyphConfig::default()
                     },
                     ..Config::default()
@@ -673,7 +831,7 @@ mod tests {
         }
 
         #[test]
-        fn snake_head_styled_directions() {
+        fn compound_symbol_styled_tables() {
             let tmp = NamedTempFile::new().unwrap();
             std::fs::write(
                 tmp.path(),
@@ -681,6 +839,32 @@ mod tests {
                     "[glyphs.snake-head]\n",
                     "symbol = { north = \"↑\", south = \"↓\", east = \"→\", west = \"←\" }\n",
                     "style = \"bold blue on white\"\n",
+                    "\n",
+                    "[glyphs.border]\n",
+                    "style = \"reverse\"\n",
+                    "\n",
+                    "[glyphs.border.symbol]\n",
+                    "top = \"v\"\n",
+                    "bottom = \"^\"\n",
+                    "left = \">\"\n",
+                    "right = \"<\"\n",
+                    "top-left = \"X\"\n",
+                    "top-right = \"X\"\n",
+                    "bottom-left = \"X\"\n",
+                    "bottom-right = \"X\"\n",
+                    "\n",
+                    "[glyphs.wraparound]\n",
+                    "style = \"u\"\n",
+                    "\n",
+                    "[glyphs.wraparound.symbol]\n",
+                    "top = \"↑\"\n",
+                    "bottom = \"↓\"\n",
+                    "left = \"←\"\n",
+                    "right = \"→\"\n",
+                    "top-left = \" \"\n",
+                    "top-right = \" \"\n",
+                    "bottom-left = \" \"\n",
+                    "bottom-right = \" \"\n",
                 ),
             )
             .unwrap();
@@ -700,6 +884,32 @@ mod tests {
                                 .fg(Color::Indexed(4))
                                 .bg(Color::Indexed(7))
                                 .add_modifier(Modifier::BOLD),
+                        },
+                        border: BorderConfig {
+                            symbol: BorderSymbol::Split {
+                                top: "v".parse::<Symbol>().unwrap(),
+                                bottom: "^".parse::<Symbol>().unwrap(),
+                                left: ">".parse::<Symbol>().unwrap(),
+                                right: "<".parse::<Symbol>().unwrap(),
+                                top_left: "X".parse::<Symbol>().unwrap(),
+                                top_right: "X".parse::<Symbol>().unwrap(),
+                                bottom_left: "X".parse::<Symbol>().unwrap(),
+                                bottom_right: "X".parse::<Symbol>().unwrap(),
+                            },
+                            style: Style::new().reversed(),
+                        },
+                        wraparound: BorderConfig {
+                            symbol: BorderSymbol::Split {
+                                top: "↑".parse::<Symbol>().unwrap(),
+                                bottom: "↓".parse::<Symbol>().unwrap(),
+                                left: "←".parse::<Symbol>().unwrap(),
+                                right: "→".parse::<Symbol>().unwrap(),
+                                top_left: " ".parse::<Symbol>().unwrap(),
+                                top_right: " ".parse::<Symbol>().unwrap(),
+                                bottom_left: " ".parse::<Symbol>().unwrap(),
+                                bottom_right: " ".parse::<Symbol>().unwrap(),
+                            },
+                            style: Style::new().underlined(),
                         },
                         ..GlyphConfig::default()
                     },

@@ -172,12 +172,22 @@ unless indicated otherwise:
       itself, an obstacle, or the level border
     - `fruit` — Set the symbol & style used for fruit
     - `obstacle` — Set the symbol & style used for obstacles
-    - `snake-body` — Set the symbol & style used for the parts of the snake's body
-    - `snake-head` — Set the symbol & style used for the snake's head.
+    - `snake-body` — Set the symbol & style used for the parts of the snake's
+      body
+    - `snake-head` — Set the symbol & style used for the snake's head
         - Unlike the other glyphs, `snake-head.symbol` may alternatively be set
           to a table with `north`, `south`, `east`, and `west` symbol keys (all
           required), giving the symbols to use for the snake's head when it's
           moving in the respective directions
+    - `border` — Set the symbol & style used for non-wraparound level borders
+        - Unlike most other glyphs, `border.symbol` may alternatively be set to
+          a table with `top`, `bottom`, `left`, `right`, `top-left`,
+          `top-right`, `bottom-left`, and `bottom-right` symbol keys (all
+          required), giving the symbols to use for the respective sides &
+          corners of the border
+    - `wraparound` — Set the symbol & style used for wraparound level borders.
+      `wraparound.symbol` may alternatively be set to a table the same way as
+      `border.symbol`.
 
 - `[options]` — Set default gameplay options, for use when the options file is
   absent, disabled, or can't be read
@@ -225,6 +235,32 @@ style = "white"
 [glyphs.collision]
 symbol = "\u00D7"
 style = "reverse bright_red"
+
+[glyphs.border]
+style = "none"
+
+[glyphs.border.symbol]
+top = "\u2500"
+bottom = "\u2500"
+left = "\u2502"
+right = "\u2502"
+top-left = "\u250C"
+top-right = "\u2510"
+bottom-left = "\u2514"
+bottom-right = "\u2518"
+
+[glyphs.wraparound]
+style = "none"
+
+[glyphs.wraparound.symbol]
+top = "\u22EF"
+bottom = "\u22EF"
+left = "\u22EE"
+right = "\u22EE"
+top-left = "\u00B7"
+top-right = "\u00B7"
+bottom-left = "\u00B7"
+bottom-right = "\u00B7"
 
 [options]
 wraparound = false

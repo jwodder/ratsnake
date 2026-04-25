@@ -5,6 +5,8 @@ v0.4.0 (in development)
   resolved relative to the directory containing the configuration file
 - Added a "Randomize" button to the main menu for randomizing all gameplay
   options
+- The symbols & styling of the level border can now be set in the configuration
+  file
 
 v0.3.1 (2025-12-26)
 -------------------
