@@ -238,7 +238,7 @@ enum Selection {
     /// The options sub-menu
     Options(OptKey),
 
-    /// The "[Randomize (@)]" button
+    /// The "[Randomize (&#x41;)]" button
     Randomize,
 
     /// The "[High Scores (H)]" button
