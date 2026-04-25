@@ -88,7 +88,7 @@ impl HSTable {
     /// screen or quit.
     fn handle_command(&mut self, cmd: Command) -> Option<Screen> {
         match (cmd, self.scrolling()) {
-            (Command::Quit, _) => return Some(Screen::Quit),
+            (Command::Quit | Command::Q, _) => return Some(Screen::Quit),
             (Command::Esc, _) => return Some(Screen::Main(MainMenu::new(self.globals.clone()))),
             (Command::Up, true) if self.scroll_offset > 0 => self.scroll_offset -= 1,
             (Command::Down, true) if self.scroll_offset < self.max_scroll.saturating_sub(1) => {
@@ -296,7 +296,7 @@ mod tests {
         globals
             .high_scores
             .set(globals.options, NonZeroU32::new(42).unwrap());
-        let hstable = HSTable::new(globals);
+        let mut hstable = HSTable::new(globals);
         let area = Rect::new(0, 0, 80, 24);
         let mut buffer = Buffer::empty(area);
         hstable.render(area, &mut buffer);
@@ -334,6 +334,10 @@ mod tests {
         expected.set_style(Rect::new(56, 2, 10, 1), consts::HSTABLE_HEADER_STYLE); // "Level Size"
         expected.set_style(Rect::new(7, 23, 3, 1), consts::KEY_STYLE); // "Esc"
         pretty_assertions::assert_eq!(buffer, expected);
+        assert!(matches!(
+            hstable.handle_command(Command::Q),
+            Some(Screen::Quit)
+        ));
     }
 
     #[test]
