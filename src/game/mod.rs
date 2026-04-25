@@ -6,6 +6,7 @@ use self::paused::{PauseOpt, Paused};
 use self::snake::Snake;
 use crate::app::Screen;
 use crate::command::Command;
+use crate::config::{BorderConfig, BorderPart};
 use crate::consts;
 use crate::direction::Direction;
 use crate::util::{Globals, center_rect, get_display_area};
@@ -18,7 +19,7 @@ use ratatui::{
     layout::{Constraint, Layout, Margin, Position, Rect, Size},
     style::Style,
     text::{Line, Span},
-    widgets::{Block, Widget},
+    widgets::Widget,
 };
 use std::collections::HashSet;
 use std::num::NonZeroU32;
@@ -291,13 +292,13 @@ impl<R> Widget for &Game<R> {
         block_size.width = block_size.width.saturating_add(2);
         block_size.height = block_size.height.saturating_add(2);
         let block_area = center_rect(block_area, block_size);
-        if self.map.wrap() {
-            DottedBorder.render(block_area, buf);
-        } else {
-            Block::bordered().render(block_area, buf);
-        }
 
         let glyphs = &self.globals.config.glyphs;
+        if self.map.wrap() {
+            LevelBorder(&glyphs.wraparound).render(block_area, buf);
+        } else {
+            LevelBorder(&glyphs.border).render(block_area, buf);
+        }
         let level_area = block_area.inner(Margin::new(1, 1));
         let mut level = Canvas {
             area: level_area,
@@ -374,20 +375,6 @@ struct Canvas<'a> {
 }
 
 impl Canvas<'_> {
-    /// Set the cell at `pos` to `symbol`
-    fn draw_char(&mut self, pos: Position, symbol: char) {
-        let Some(x) = self.area.x.checked_add(pos.x) else {
-            return;
-        };
-        let Some(y) = self.area.y.checked_add(pos.y) else {
-            return;
-        };
-        if let Some(cell) = self.buf.cell_mut((x, y)) {
-            cell.set_char(symbol);
-            cell.set_style(Style::reset());
-        }
-    }
-
     /// Set the cell at `pos` to `symbol` with the given style
     fn draw_cell<S: AsRef<str>>(&mut self, pos: Position, symbol: S, style: Style) {
         let Some(x) = self.area.x.checked_add(pos.x) else {
@@ -403,13 +390,12 @@ impl Canvas<'_> {
     }
 }
 
-/// A widget for drawing a border made of dots around the edge of an area.
-///
-/// Like [`Block::bordered()`], but with different characters.
+/// A widget for drawing a border made of configurable characters around the
+/// edge of an area.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-struct DottedBorder;
+struct LevelBorder<'a>(&'a BorderConfig);
 
-impl Widget for DottedBorder {
+impl Widget for LevelBorder<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         if area.is_empty() {
             return;
@@ -418,17 +404,51 @@ impl Widget for DottedBorder {
         let max_x = size.width.saturating_sub(1);
         let max_y = size.height.saturating_sub(1);
         let mut canvas = Canvas { area, buf };
-        canvas.draw_char(Position::ORIGIN, '·');
-        canvas.draw_char(Position::new(max_x, 0), '·');
-        canvas.draw_char(Position::new(max_x, max_y), '·');
-        canvas.draw_char(Position::new(0, max_y), '·');
+        let style = self.0.style;
+        let symbols = &self.0.symbol;
+        canvas.draw_cell(
+            Position::ORIGIN,
+            symbols.for_part(BorderPart::TopLeft),
+            style,
+        );
+        canvas.draw_cell(
+            Position::new(max_x, 0),
+            symbols.for_part(BorderPart::TopRight),
+            style,
+        );
+        canvas.draw_cell(
+            Position::new(max_x, max_y),
+            symbols.for_part(BorderPart::BottomRight),
+            style,
+        );
+        canvas.draw_cell(
+            Position::new(0, max_y),
+            symbols.for_part(BorderPart::BottomLeft),
+            style,
+        );
         for x in 1..max_x {
-            canvas.draw_char(Position::new(x, 0), '⋯');
-            canvas.draw_char(Position::new(x, max_y), '⋯');
+            canvas.draw_cell(
+                Position::new(x, 0),
+                symbols.for_part(BorderPart::Top),
+                style,
+            );
+            canvas.draw_cell(
+                Position::new(x, max_y),
+                symbols.for_part(BorderPart::Bottom),
+                style,
+            );
         }
         for y in 1..max_y {
-            canvas.draw_char(Position::new(0, y), '⋮');
-            canvas.draw_char(Position::new(max_x, y), '⋮');
+            canvas.draw_cell(
+                Position::new(0, y),
+                symbols.for_part(BorderPart::Left),
+                style,
+            );
+            canvas.draw_cell(
+                Position::new(max_x, y),
+                symbols.for_part(BorderPart::Right),
+                style,
+            );
         }
     }
 }
@@ -464,6 +484,7 @@ struct PostMortem {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::{BorderSymbol, Symbol};
     use crate::options::LevelSize;
     use crossterm::event::KeyCode;
     use rand::SeedableRng;
@@ -542,6 +563,55 @@ mod tests {
             " ⋮                                                                            ⋮ ",
             " ⋮                                                                            ⋮ ",
             " ·⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯· ",
+            "",
+            "",
+        ]);
+        expected.set_style(Rect::new(0, 0, 80, 1), consts::SCORE_BAR_STYLE);
+        expected.set_style(Rect::new(40, 11, 1, 1), consts::SNAKE_STYLE);
+        expected.set_style(Rect::new(28, 10, 1, 1), consts::FRUIT_STYLE);
+        pretty_assertions::assert_eq!(buffer, expected);
+    }
+
+    #[test]
+    fn new_game_custom_border() {
+        let mut globals = Globals::default();
+        globals.config.glyphs.border.symbol = BorderSymbol::Split {
+            left: ">".parse::<Symbol>().unwrap(),
+            right: "<".parse::<Symbol>().unwrap(),
+            top: "v".parse::<Symbol>().unwrap(),
+            bottom: "^".parse::<Symbol>().unwrap(),
+            top_left: "A".parse::<Symbol>().unwrap(),
+            top_right: "B".parse::<Symbol>().unwrap(),
+            bottom_left: "C".parse::<Symbol>().unwrap(),
+            bottom_right: "D".parse::<Symbol>().unwrap(),
+        };
+        let game = Game::new_with_rng(globals, ChaCha12Rng::seed_from_u64(RNG_SEED));
+        let area = Rect::new(0, 0, 80, 24);
+        let mut buffer = Buffer::empty(area);
+        game.render(area, &mut buffer);
+        let mut expected = Buffer::with_lines([
+            " Score: 0                                                         High Score: - ",
+            " AvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvB ",
+            " >                                                                            < ",
+            " >                                                                            < ",
+            " >                                                                            < ",
+            " >                                                                            < ",
+            " >                                                                            < ",
+            " >                                                                            < ",
+            " >                                                                            < ",
+            " >                                                                            < ",
+            " >                          ●                                                 < ",
+            " >                                      v                                     < ",
+            " >                                                                            < ",
+            " >                                                                            < ",
+            " >                                                                            < ",
+            " >                                                                            < ",
+            " >                                                                            < ",
+            " >                                                                            < ",
+            " >                                                                            < ",
+            " >                                                                            < ",
+            " >                                                                            < ",
+            " C^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^D ",
             "",
             "",
         ]);
