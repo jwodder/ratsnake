@@ -16,7 +16,7 @@ use ratatui::{
     layout::{Constraint, Flex, Layout, Rect},
     style::Style,
     text::{Line, Span},
-    widgets::{Block, Padding, Widget},
+    widgets::{Block, Padding, StatefulWidget, Widget},
 };
 
 /// The main menu/startup screen
@@ -70,8 +70,8 @@ impl MainMenu {
         }
         match self.state {
             MenuState::Normal => match (self.selection, cmd) {
-                (_, Command::Home) => self.select(Selection::PlayButton, None),
-                (_, Command::End) => self.select(Selection::QuitButton, None),
+                (_, Command::Home) => self.selection = Selection::min(),
+                (_, Command::End) => self.selection = Selection::max(),
                 (Selection::PlayButton, Command::Enter) | (_, Command::P) => {
                     let options = self.opts_menu.to_options();
                     self.globals.options = options;
@@ -80,38 +80,32 @@ impl MainMenu {
                         Err(e) => self.state = MenuState::SaveWarning(Warning::from(e)),
                     }
                 }
-                (Selection::PlayButton, Command::Prev) => self.select(Selection::QuitButton, None),
-                (Selection::PlayButton, Command::Down | Command::Next) => {
-                    self.select(Selection::Options, Some(true));
+                (s, Command::Prev) => {
+                    self.selection = s.prev().unwrap_or_else(Selection::max);
                 }
-                (Selection::Options, Command::Up | Command::Prev) => {
-                    if let Some(sel) = self.opts_menu.move_up() {
-                        self.select(sel, None);
+                (s, Command::Up) => {
+                    if let Some(s2) = s.prev() {
+                        self.selection = s2;
                     }
                 }
-                (Selection::Options, Command::Down | Command::Next) => {
-                    if let Some(sel) = self.opts_menu.move_down() {
-                        self.select(sel, None);
+                (s, Command::Down) => {
+                    if let Some(s2) = s.next() {
+                        self.selection = s2;
                     }
                 }
-                (Selection::Options, Command::Left) => self.opts_menu.move_left(),
-                (Selection::Options, Command::Right) => self.opts_menu.move_right(),
-                (Selection::Options, Command::Space | Command::Enter) => self.opts_menu.toggle(),
+                (s, Command::Next) => {
+                    self.selection = s.next().unwrap_or_else(Selection::min);
+                }
+                (Selection::Options(opt), Command::Left) => self.opts_menu.move_left(opt),
+                (Selection::Options(opt), Command::Right) => self.opts_menu.move_right(opt),
+                (Selection::Options(opt), Command::Space | Command::Enter) => {
+                    self.opts_menu.toggle(opt);
+                }
                 (Selection::HighScores, Command::Enter) | (_, Command::HighScores) => {
                     return Some(Screen::HSTable(HSTable::new(self.globals.clone())));
                 }
-                (Selection::HighScores, Command::Down | Command::Next) => {
-                    self.select(Selection::QuitButton, None);
-                }
-                (Selection::HighScores, Command::Up | Command::Prev) => {
-                    self.select(Selection::Options, Some(false));
-                }
                 (Selection::QuitButton, Command::Enter) | (_, Command::Q) => {
                     return Some(Screen::Quit);
-                }
-                (Selection::QuitButton, Command::Next) => self.select(Selection::PlayButton, None),
-                (Selection::QuitButton, Command::Up | Command::Prev) => {
-                    self.select(Selection::HighScores, None);
                 }
                 _ => (),
             },
@@ -126,25 +120,6 @@ impl MainMenu {
     /// Create a new game
     fn play(&self) -> Game {
         Game::new(self.globals.clone())
-    }
-
-    /// Select the given form element.  If `selection` is
-    /// [`Selection::Options`], the [`OptionsMenu`]'s selection will be set the
-    /// first option (if `first_option` is `Some(true)`), last option (if
-    /// `first_option` is `Some(false)`), or `None`.
-    fn select(&mut self, selection: Selection, first_option: Option<bool>) {
-        self.selection = selection;
-        if selection == Selection::Options {
-            if let Some(first) = first_option {
-                self.opts_menu.selection = if first {
-                    Some(OptKey::min())
-                } else {
-                    Some(OptKey::max())
-                };
-            } else {
-                self.opts_menu.selection = None;
-            }
-        }
     }
 }
 
@@ -194,7 +169,11 @@ impl Widget for &MainMenu {
         let [options_area] = Layout::horizontal([OptionsMenu::WIDTH])
             .flex(Flex::Center)
             .areas(options_area);
-        (&self.opts_menu).render(options_area, buf);
+        let mut opts_state = match self.selection {
+            Selection::Options(opt) => Some(opt),
+            _ => None,
+        };
+        (&self.opts_menu).render(options_area, buf, &mut opts_state);
 
         let hsstyle = if self.selection == Selection::HighScores {
             consts::MENU_SELECTION_STYLE
@@ -249,14 +228,14 @@ enum MenuState {
 }
 
 /// An enum of the form elements
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Enum, Eq, PartialEq)]
 enum Selection {
     /// The "[Play (p)]" button
     #[default]
     PlayButton,
 
     /// The options sub-menu
-    Options,
+    Options(OptKey),
 
     /// The "[High Scores (H)]" button
     HighScores,
@@ -268,11 +247,6 @@ enum Selection {
 /// State of the options sub-menu
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct OptionsMenu {
-    /// If the currently-selected main menu item is an element of this menu,
-    /// then `selection` is `Some(key)`, where `key` is the key of the selected
-    /// item within the `OptionsMenu`.
-    selection: Option<OptKey>,
-
     /// Option values currently displayed in the submenu
     settings: EnumMap<OptKey, OptValue>,
 }
@@ -301,10 +275,7 @@ impl OptionsMenu {
     /// values
     fn new(options: Options) -> Self {
         let settings = EnumMap::from_iter(OptKey::iter().map(|key| (key, options.get(key))));
-        OptionsMenu {
-            selection: None,
-            settings,
-        }
+        OptionsMenu { settings }
     }
 
     /// Return the `Options` currently selected in the menu
@@ -316,46 +287,29 @@ impl OptionsMenu {
         opts
     }
 
-    /// Select the previous option in the submenu.  If there is no previous
-    /// item, return the form item to move the selection to instead.
-    fn move_up(&mut self) -> Option<Selection> {
-        self.selection = self.selection?.prev();
-        self.selection.is_none().then_some(Selection::PlayButton)
-    }
-
-    /// Select the next option in the submenu.  If there is no next item,
-    /// return the form item to move the selection to instead.
-    fn move_down(&mut self) -> Option<Selection> {
-        self.selection = self.selection?.next();
-        self.selection.is_none().then_some(Selection::HighScores)
-    }
-
-    /// Respond to a "Left" input by decreasing or unsetting the current
+    /// Respond to a "Left" input by decreasing or unsetting the given
     /// option, if possible
-    fn move_left(&mut self) {
-        if let Some(sel) = self.selection {
-            self.settings[sel].decrease();
-        }
+    fn move_left(&mut self, opt: OptKey) {
+        self.settings[opt].decrease();
     }
 
-    /// Respond to a "Right" input by increasing or setting the current
+    /// Respond to a "Right" input by increasing or setting the given
     /// option, if possible
-    fn move_right(&mut self) {
-        if let Some(sel) = self.selection {
-            self.settings[sel].increase();
-        }
+    fn move_right(&mut self, opt: OptKey) {
+        self.settings[opt].increase();
     }
 
-    /// Toggle the current option, if possible
-    fn toggle(&mut self) {
-        if let Some(sel) = self.selection {
-            self.settings[sel].toggle();
-        }
+    /// Toggle the given option, if possible
+    fn toggle(&mut self, opt: OptKey) {
+        self.settings[opt].toggle();
     }
 }
 
-impl Widget for &OptionsMenu {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl StatefulWidget for &OptionsMenu {
+    type State = Option<OptKey>;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Option<OptKey>) {
+        let selection = state.as_ref().copied();
         let block = Block::bordered()
             .title(" Options: ")
             .padding(Padding::horizontal(OptionsMenu::HORIZONTAL_PADDING));
@@ -365,7 +319,7 @@ impl Widget for &OptionsMenu {
             .map(|key| (key, self.settings[key]))
             .zip(menu_area.rows())
         {
-            let selected = Some(key) == self.selection;
+            let selected = Some(key) == selection;
             let style = if selected {
                 consts::MENU_SELECTION_STYLE
             } else {
@@ -771,17 +725,17 @@ mod tests {
         #[test]
         fn tab_wraparound() {
             let mut menu = MainMenu::new(Globals::default());
-            assert_eq!(menu.opts_menu.selection, None);
+            assert_eq!(menu.selection, Selection::PlayButton);
             for _ in OptKey::iter() {
                 assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             }
-            assert_eq!(menu.opts_menu.selection, Some(OptKey::max()));
+            assert_eq!(menu.selection, Selection::Options(OptKey::max()));
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
-            assert_eq!(menu.opts_menu.selection, None);
+            assert_eq!(menu.selection, Selection::HighScores);
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
             assert!(menu.handle_event(Event::Key(KeyCode::Tab.into())).is_none());
-            assert_eq!(menu.opts_menu.selection, Some(OptKey::min()));
+            assert_eq!(menu.selection, Selection::Options(OptKey::min()));
         }
     }
 
