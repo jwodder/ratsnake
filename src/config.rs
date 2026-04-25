@@ -565,6 +565,41 @@ mod tests {
         }
 
         #[test]
+        fn relative_file_paths() {
+            let tmp = NamedTempFile::new().unwrap();
+            let parent = tmp.path().parent().unwrap();
+            std::fs::write(
+                tmp.path(),
+                concat!(
+                    "[files]\n",
+                    "high-scores-dir = \"scores\"\n",
+                    "options-file = \"snake/options.json\"\n",
+                ),
+            )
+            .unwrap();
+            let cfg = Config::load(tmp.path(), false).unwrap();
+            assert_eq!(
+                cfg,
+                Config {
+                    files: FileConfig {
+                        options_file: OptionsFile::Path(parent.join("snake/options.json")),
+                        high_scores_dir: Some(parent.join("scores")),
+                        ..FileConfig::default()
+                    },
+                    ..Config::default()
+                }
+            );
+            assert_eq!(
+                cfg.options_file(),
+                Ok(Some(Cow::from(parent.join("snake/options.json"))))
+            );
+            assert_eq!(
+                cfg.high_scores_file(),
+                Ok(parent.join("scores").join("arcade.json"))
+            );
+        }
+
+        #[test]
         fn snake_head_str() {
             let tmp = NamedTempFile::new().unwrap();
             std::fs::write(tmp.path(), "[glyphs]\nsnake-head.symbol = \"@\"\n").unwrap();
