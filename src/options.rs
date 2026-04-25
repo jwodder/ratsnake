@@ -2,6 +2,10 @@ use crate::consts;
 use crate::util::{Bounds, LoadError, SaveError, data_dir};
 use enum_dispatch::enum_dispatch;
 use enum_map::Enum;
+use rand::{
+    Rng, RngExt,
+    distr::{Distribution, StandardUniform},
+};
 use ratatui::layout::Size;
 use serde::{
     Deserialize, Serialize,
@@ -242,7 +246,7 @@ impl Adjustable for bool {
 
 /// Possible level sizes that the user can choose from
 #[derive(
-    Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Copy, Debug, Default, Deserialize, Enum, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum LevelSize {
@@ -288,6 +292,12 @@ impl fmt::Display for LevelSize {
             LevelSize::Large => "Large",
         };
         f.pad(name)
+    }
+}
+
+impl Distribution<LevelSize> for StandardUniform {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> LevelSize {
+        LevelSize::from_usize(rng.random_range(0..LevelSize::LENGTH))
     }
 }
 
@@ -402,6 +412,12 @@ impl<'de> Deserialize<'de> for FruitQty {
         }
 
         deserializer.deserialize_any(Visitor)
+    }
+}
+
+impl Distribution<FruitQty> for StandardUniform {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> FruitQty {
+        FruitQty(rng.random_range(1..=consts::MAX_FRUITS))
     }
 }
 
