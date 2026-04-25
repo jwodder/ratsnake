@@ -1,5 +1,5 @@
-v0.4.0 (in development)
------------------------
+v0.4.0 (2026-04-25)
+-------------------
 - Pressing `q` at the high score table screen now quits the program
 - Relative file paths in the `[files]` table of the configuration file are now
   resolved relative to the directory containing the configuration file
