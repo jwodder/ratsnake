@@ -481,12 +481,13 @@ mod tests {
         #[test]
         fn options_file_path() {
             let tmp = NamedTempFile::new().unwrap();
+            #[cfg(windows)]
+            let opts_file = r"C:\home\luser\stuff\ratsnake\options.json";
+            #[cfg(not(windows))]
+            let opts_file = "/home/luser/stuff/ratsnake/options.json";
             std::fs::write(
                 tmp.path(),
-                concat!(
-                    "[files]\n",
-                    "options-file = \"/home/luser/stuff/ratsnake/options.json\"\n"
-                ),
+                format!("[files]\noptions-file = {opts_file:?}\n"),
             )
             .unwrap();
             let cfg = Config::load(tmp.path(), false).unwrap();
@@ -494,9 +495,7 @@ mod tests {
                 cfg,
                 Config {
                     files: FileConfig {
-                        options_file: OptionsFile::Path(PathBuf::from(
-                            "/home/luser/stuff/ratsnake/options.json"
-                        )),
+                        options_file: OptionsFile::Path(PathBuf::from(opts_file)),
                         ..FileConfig::default()
                     },
                     ..Config::default()
@@ -504,9 +503,7 @@ mod tests {
             );
             assert_eq!(
                 cfg.options_file(),
-                Ok(Some(Cow::from(PathBuf::from(
-                    "/home/luser/stuff/ratsnake/options.json"
-                ))))
+                Ok(Some(Cow::from(PathBuf::from(opts_file))))
             );
         }
 
