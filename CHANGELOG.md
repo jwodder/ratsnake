@@ -1,3 +1,7 @@
+v0.4.0 (in development)
+-----------------------
+- Pressing `q` at the high score table screen now quits the program
+
 v0.3.1 (2025-12-26)
 -------------------
 - Add keywords & categories to package metadata
