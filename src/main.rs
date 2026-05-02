@@ -81,10 +81,10 @@ impl Command {
                 )?;
                 writeln!(&mut stdout)?;
                 writeln!(&mut stdout, "Options:")?;
-                writeln!(&mut stdout, "  -c <file>, --config <file>")?;
+                writeln!(&mut stdout, "  -c FILE, --config FILE")?;
                 writeln!(
                     &mut stdout,
-                    "                    Read configuration settings from <file>."
+                    "                    Read configuration settings from FILE."
                 )?;
                 writeln!(&mut stdout)?;
                 if let Ok(p) = Config::default_path() {

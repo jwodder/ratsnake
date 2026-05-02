@@ -47,8 +47,8 @@ immediately end the program.
 Options
 -------
 
-- `-c <file>`, `--config <file>` — Read program confguration from `<file>`.
-  See "Configuration" below for more information.
+- `-c FILE`, `--config FILE` — Read program confguration from `FILE`.  See
+  "Configuration" below for more information.
 
 - `-h`, `--help` — Show command-line usage
 
