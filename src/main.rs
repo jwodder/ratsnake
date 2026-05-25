@@ -18,7 +18,7 @@ use crossterm::{
     event::{DisableFocusChange, EnableFocusChange},
     execute,
 };
-use lexopt::{Arg, Parser, ValueExt};
+use lexopt::{Arg, Parser};
 use std::io::{self, ErrorKind, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -38,7 +38,7 @@ impl Command {
                 Arg::Short('h') | Arg::Long("help") => return Ok(Command::Help),
                 Arg::Short('V') | Arg::Long("version") => return Ok(Command::Version),
                 Arg::Short('c') | Arg::Long("config") => {
-                    cfg_src = ConfigSource::Path(parser.value()?.parse()?);
+                    cfg_src = ConfigSource::Path(PathBuf::from(parser.value()?));
                 }
                 _ => return Err(arg.unexpected()),
             }

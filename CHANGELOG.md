@@ -1,3 +1,8 @@
+v0.5.0 (in development)
+-----------------------
+- Configuration file paths supplied on the command line no longer need to be
+  valid UTF-8
+
 v0.4.0 (2026-04-25)
 -------------------
 - Pressing `q` at the high score table screen now quits the program
