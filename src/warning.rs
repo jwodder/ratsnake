@@ -458,7 +458,7 @@ mod tests {
             "             │     6: The frumious Bandersnatch!                █ │             ",
             "             │     7: He took his vorpal sword in hand:         █ │             ",
             "             │     8: Long time the manxome foe he sought--     █ │             ",
-            "             │     9: So rested he by the Tumtum tree,          ▒ │             ",
+            "             │     9: So rested he by the Tumtum tree,          █ │             ",
             "             │    10: And stood awhile in thought.              ▒ │             ",
             "             │    11: And as in uffish thought he stood,        ▒ │             ",
             "             │    12: The Jabberwock, with eyes of flame,       ▒ │             ",
