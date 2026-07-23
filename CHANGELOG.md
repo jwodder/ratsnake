@@ -2,6 +2,7 @@ v0.5.0 (in development)
 -----------------------
 - Configuration file paths supplied on the command line no longer need to be
   valid UTF-8
+- Increased MSRV to 1.95
 
 v0.4.0 (2026-04-25)
 -------------------

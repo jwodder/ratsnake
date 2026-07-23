@@ -1,5 +1,5 @@
 use crate::consts;
-use enum_map::Enum;
+use enum_map::{Array, Enum};
 use ratatui::layout::{Constraint, Position, Positions, Rect, Size};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -85,7 +85,7 @@ impl<T: Enum> EnumExt for T {
     fn next(self) -> Option<Self> {
         self.into_usize()
             .checked_add(1)
-            .filter(|&j| j < Self::LENGTH)
+            .filter(|&j| j < Self::Array::<()>::LENGTH)
             .map(Self::from_usize)
     }
 
@@ -98,7 +98,7 @@ impl<T: Enum> EnumExt for T {
     }
 
     fn max() -> Self {
-        Self::from_usize(Self::LENGTH - 1)
+        Self::from_usize(Self::Array::<()>::LENGTH - 1)
     }
 }
 
@@ -113,7 +113,7 @@ pub(crate) struct EnumExtIter<T> {
 impl<T: Enum> EnumExtIter<T> {
     fn new() -> Self {
         EnumExtIter {
-            inner: 0..T::LENGTH,
+            inner: 0..T::Array::<()>::LENGTH,
             _marker: std::marker::PhantomData,
         }
     }

@@ -1,7 +1,7 @@
 use crate::consts;
 use crate::util::{Bounds, LoadError, SaveError, data_dir};
 use enum_dispatch::enum_dispatch;
-use enum_map::Enum;
+use enum_map::{Array, Enum};
 use rand::{
     Rng, RngExt,
     distr::{Distribution, StandardUniform},
@@ -297,7 +297,7 @@ impl fmt::Display for LevelSize {
 
 impl Distribution<LevelSize> for StandardUniform {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> LevelSize {
-        LevelSize::from_usize(rng.random_range(0..LevelSize::LENGTH))
+        LevelSize::from_usize(rng.random_range(0..<LevelSize as Enum>::Array::<()>::LENGTH))
     }
 }
 

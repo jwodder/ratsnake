@@ -9,7 +9,7 @@ use crate::options::{Adjustable, OptKey, OptValue, Options};
 use crate::util::{EnumExt, Globals, get_display_area};
 use crate::warning::{Warning, WarningOutcome};
 use crossterm::event::{Event, read};
-use enum_map::{Enum, EnumMap};
+use enum_map::{Array, Enum, EnumMap};
 use rand::{Rng, RngExt};
 use ratatui::{
     Frame,
@@ -259,7 +259,7 @@ impl OptionsMenu {
     /// The height that should be used for the `Rect` passed to
     /// `&OptionsMenu::render()`
     #[allow(clippy::cast_possible_truncation)]
-    const HEIGHT: u16 = (OptKey::LENGTH as u16) + 2 /* for border */ + 2 /* for "Randomize" button */;
+    const HEIGHT: u16 = (<OptKey as Enum>::Array::<()>::LENGTH as u16) + 2 /* for border */ + 2 /* for "Randomize" button */;
 
     /// The width of the horizontal padding on each inner side of the menu
     /// border
